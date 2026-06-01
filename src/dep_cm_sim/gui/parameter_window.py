@@ -33,9 +33,19 @@ class ParameterDefinition:
     unit: str
     default_value: str
     relation: str
+    value_type: str = "float"
 
 
 PARAMETER_DEFINITIONS: list[ParameterDefinition] = [
+    ParameterDefinition(
+        key="graph_label",
+        name="グラフラベル",
+        symbol="label",
+        unit="-",
+        default_value="",
+        relation="空欄の場合は sigma_s から自動生成",
+        value_type="str",
+    ),
     ParameterDefinition(
         key="membrane_capacitance",
         name="細胞膜容量",
@@ -107,6 +117,7 @@ PARAMETER_DEFINITIONS: list[ParameterDefinition] = [
         unit="points",
         default_value="1000",
         relation="number of log-spaced frequency points",
+        value_type="int",
     ),
 ]
 
@@ -116,7 +127,7 @@ class ParameterWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("DEP CM Factor Simulator - Parameter Window")
-        self.resize(1200, 600)
+        self.resize(1200, 650)
 
         self.input_widgets: dict[str, QLineEdit] = {}
         self.graph_window: GraphWindow | None = None
@@ -180,27 +191,32 @@ class ParameterWindow(QMainWindow):
 
         self.setCentralWidget(central_widget)
 
-    def read_parameters(self) -> dict[str, float | int]:
-        parameters: dict[str, float | int] = {}
+    def read_parameters(self) -> dict[str, float | int | str]:
+        parameters: dict[str, float | int | str] = {}
 
         for parameter in PARAMETER_DEFINITIONS:
             raw_value = self.input_widgets[parameter.key].text()
 
-            if parameter.key == "num_points":
+            if parameter.value_type == "str":
+                parameters[parameter.key] = raw_value.strip()
+            elif parameter.value_type == "int":
                 parameters[parameter.key] = int(raw_value)
             else:
                 parameters[parameter.key] = float(raw_value)
 
         return parameters
 
-    def apply_parameters(self, parameters: dict[str, float | int]) -> None:
+    def apply_parameters(self, parameters: dict[str, float | int | str]) -> None:
         for parameter in PARAMETER_DEFINITIONS:
             if parameter.key not in parameters:
+                if parameter.key == "graph_label":
+                    self.input_widgets[parameter.key].setText("")
+                    continue
                 raise ValueError(f"CSVに必要なパラメータがありません: {parameter.key}")
 
             self.input_widgets[parameter.key].setText(str(parameters[parameter.key]))
 
-    def validate_parameters(self, parameters: dict[str, float | int]) -> None:
+    def validate_parameters(self, parameters: dict[str, float | int | str]) -> None:
         f_min = float(parameters["f_min"])
         f_max = float(parameters["f_max"])
         num_points = int(parameters["num_points"])
@@ -234,7 +250,13 @@ class ParameterWindow(QMainWindow):
             sigma_s=float(parameters["sigma_s"]),
         )
 
-        label = f"sigma_s={float(parameters['sigma_s']):.2e} S/m"
+        graph_label = str(parameters["graph_label"]).strip()
+
+        if graph_label:
+            label = graph_label
+        else:
+            label = f"sigma_s={float(parameters['sigma_s']):.2e} S/m"
+
         return frequency_hz, cm_factor_real, label
 
     def plot_on_current_graph(self) -> None:
