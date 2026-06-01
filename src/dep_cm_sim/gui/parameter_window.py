@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.gui.graph_window import GraphWindow
+from dep_cm_sim.paper_conditions import PAPER_FIGURE_SIGMA_S_CONDITIONS
 from dep_cm_sim.parameter_io import load_parameters_from_csv, save_parameters_to_csv
 
 
@@ -187,6 +188,10 @@ class ParameterWindow(QMainWindow):
         reset_button.clicked.connect(self.reset_parameters)
         button_layout.addWidget(reset_button, 1, 2)
 
+        paper_figure_button = QPushButton("論文図(a)〜(h)を再現")
+        paper_figure_button.clicked.connect(self.plot_paper_figure_reproduction)
+        button_layout.addWidget(paper_figure_button, 2, 0, 1, 3)
+
         layout.addLayout(button_layout)
 
         self.setCentralWidget(central_widget)
@@ -280,6 +285,39 @@ class ParameterWindow(QMainWindow):
             graph_window.add_curve(frequency_hz, cm_factor_real, label)
             graph_window.show()
 
+            self.extra_graph_windows.append(graph_window)
+
+        except Exception as error:
+            self.show_generation_error(error)
+
+    def plot_paper_figure_reproduction(self) -> None:
+        try:
+            parameters = self.read_parameters()
+            self.validate_parameters(parameters)
+
+            frequency_hz = np.logspace(
+                np.log10(float(parameters["f_min"])),
+                np.log10(float(parameters["f_max"])),
+                int(parameters["num_points"]),
+            )
+
+            graph_window = GraphWindow()
+
+            for paper_label, sigma_s in PAPER_FIGURE_SIGMA_S_CONDITIONS:
+                cm_factor_real = calculate_cm_factor_real(
+                    frequency_hz=frequency_hz,
+                    membrane_capacitance=float(parameters["membrane_capacitance"]),
+                    radius_m=float(parameters["radius_m"]),
+                    eps_c_relative=float(parameters["eps_c_relative"]),
+                    eps_s_relative=float(parameters["eps_s_relative"]),
+                    sigma_c=float(parameters["sigma_c"]),
+                    sigma_s=sigma_s,
+                )
+
+                label = f"{paper_label} sigma_s={sigma_s:.1e} S/m"
+                graph_window.add_curve(frequency_hz, cm_factor_real, label)
+
+            graph_window.show()
             self.extra_graph_windows.append(graph_window)
 
         except Exception as error:
