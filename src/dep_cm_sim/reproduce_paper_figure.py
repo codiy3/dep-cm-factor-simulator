@@ -6,18 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from dep_cm_sim.equations import calculate_cm_factor_real
-
-
-PAPER_SIGMA_S_CONDITIONS: list[tuple[str, float]] = [
-    ("(a)", 2.0e-4),
-    ("(b)", 1.0e-3),
-    ("(c)", 1.0e-2),
-    ("(d)", 1.0e-1),
-    ("(e)", 2.0e-1),
-    ("(f)", 4.0e-1),
-    ("(g)", 5.0e-1),
-    ("(h)", 1.0e0),
-]
+from dep_cm_sim.paper_conditions import PAPER_FIGURE_SIGMA_S_CONDITIONS
 
 
 def reproduce_paper_figure(
@@ -27,7 +16,7 @@ def reproduce_paper_figure(
 
     fig, ax = plt.subplots(figsize=(7, 6))
 
-    for label, sigma_s in PAPER_SIGMA_S_CONDITIONS:
+    for label, sigma_s in PAPER_FIGURE_SIGMA_S_CONDITIONS:
         cm_factor_real = calculate_cm_factor_real(
             frequency_hz=frequency_hz,
             membrane_capacitance=0.015,
