@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
-from PySide6.QtWidgets import QMainWindow, QMessageBox, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget
 
 
 class GraphWindow(QMainWindow):
@@ -12,7 +12,7 @@ class GraphWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("DEP CM Factor Simulator - Graph Window")
-        self.resize(900, 650)
+        self.resize(900, 700)
 
         self.figure = Figure(figsize=(8, 5))
         self.canvas = FigureCanvas(self.figure)
@@ -20,7 +20,13 @@ class GraphWindow(QMainWindow):
 
         central_widget = QWidget()
         layout = QVBoxLayout()
+
         layout.addWidget(self.canvas)
+
+        clear_button = QPushButton("グラフをクリア")
+        clear_button.clicked.connect(self.clear_graph)
+        layout.addWidget(clear_button)
+
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
@@ -59,6 +65,7 @@ class GraphWindow(QMainWindow):
     def clear_graph(self) -> None:
         self.ax.clear()
         self._setup_axes()
+        self.figure.tight_layout()
         self.canvas.draw()
 
     def show_error(self, message: str) -> None:
