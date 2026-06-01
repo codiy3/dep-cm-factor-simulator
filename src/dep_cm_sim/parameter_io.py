@@ -4,8 +4,12 @@ import csv
 from pathlib import Path
 
 
-ParameterValue = float | int
+ParameterValue = float | int | str
 ParameterDict = dict[str, ParameterValue]
+
+
+STRING_PARAMETER_KEYS = {"graph_label"}
+INT_PARAMETER_KEYS = {"num_points"}
 
 
 def save_parameters_to_csv(
@@ -17,6 +21,7 @@ def save_parameters_to_csv(
 
     CSV format:
         key,value
+        graph_label,HL60_default
         membrane_capacitance,0.015
         radius_m,6.7e-6
     """
@@ -38,8 +43,9 @@ def load_parameters_from_csv(
     """
     CSVファイルからパラメータ辞書を読み込む。
 
-    value は基本的に float として読み込む。
-    num_points のみ int として扱う。
+    graph_label は str として読み込む。
+    num_points は int として読み込む。
+    その他の値は float として読み込む。
     """
 
     input_path = Path(input_path)
@@ -59,7 +65,9 @@ def load_parameters_from_csv(
             key = row["key"]
             raw_value = row["value"]
 
-            if key == "num_points":
+            if key in STRING_PARAMETER_KEYS:
+                parameters[key] = raw_value
+            elif key in INT_PARAMETER_KEYS:
                 parameters[key] = int(float(raw_value))
             else:
                 parameters[key] = float(raw_value)
