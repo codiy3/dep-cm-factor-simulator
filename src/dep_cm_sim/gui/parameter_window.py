@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 from PySide6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QGridLayout,
     QHeaderView,
     QLabel,
@@ -21,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.gui.graph_window import GraphWindow
+from dep_cm_sim.parameter_io import load_parameters_from_csv, save_parameters_to_csv
 
 
 @dataclass(frozen=True)
@@ -114,7 +116,7 @@ class ParameterWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("DEP CM Factor Simulator - Parameter Window")
-        self.resize(1200, 550)
+        self.resize(1200, 600)
 
         self.input_widgets: dict[str, QLineEdit] = {}
         self.graph_window: GraphWindow | None = None
@@ -162,9 +164,17 @@ class ParameterWindow(QMainWindow):
         new_window_button.clicked.connect(self.plot_on_new_graph_window)
         button_layout.addWidget(new_window_button, 0, 2)
 
+        save_csv_button = QPushButton("CSV保存")
+        save_csv_button.clicked.connect(self.save_parameters_csv)
+        button_layout.addWidget(save_csv_button, 1, 0)
+
+        load_csv_button = QPushButton("CSV読み込み")
+        load_csv_button.clicked.connect(self.load_parameters_csv)
+        button_layout.addWidget(load_csv_button, 1, 1)
+
         reset_button = QPushButton("既定値に戻す")
         reset_button.clicked.connect(self.reset_parameters)
-        button_layout.addWidget(reset_button, 0, 3)
+        button_layout.addWidget(reset_button, 1, 2)
 
         layout.addLayout(button_layout)
 
@@ -182,6 +192,13 @@ class ParameterWindow(QMainWindow):
                 parameters[parameter.key] = float(raw_value)
 
         return parameters
+
+    def apply_parameters(self, parameters: dict[str, float | int]) -> None:
+        for parameter in PARAMETER_DEFINITIONS:
+            if parameter.key not in parameters:
+                raise ValueError(f"CSVに必要なパラメータがありません: {parameter.key}")
+
+            self.input_widgets[parameter.key].setText(str(parameters[parameter.key]))
 
     def validate_parameters(self, parameters: dict[str, float | int]) -> None:
         f_min = float(parameters["f_min"])
@@ -245,6 +262,71 @@ class ParameterWindow(QMainWindow):
 
         except Exception as error:
             self.show_generation_error(error)
+
+    def save_parameters_csv(self) -> None:
+        try:
+            parameters = self.read_parameters()
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "CSV保存エラー",
+                f"入力値を読み取れないため、CSV保存できませんでした。\n\n原因:\n{error}",
+            )
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "パラメータ条件をCSV保存",
+            "outputs/parameters.csv",
+            "CSV files (*.csv)",
+        )
+
+        if not file_path:
+            return
+
+        try:
+            save_parameters_to_csv(parameters, file_path)
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "CSV保存エラー",
+                f"CSVを保存できませんでした。\n\n原因:\n{error}",
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "CSV保存完了",
+            f"パラメータ条件をCSV保存しました。\n\n保存先:\n{file_path}",
+        )
+
+    def load_parameters_csv(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "パラメータ条件CSVを読み込み",
+            "outputs",
+            "CSV files (*.csv)",
+        )
+
+        if not file_path:
+            return
+
+        try:
+            parameters = load_parameters_from_csv(file_path)
+            self.apply_parameters(parameters)
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "CSV読み込みエラー",
+                f"CSVを読み込めませんでした。\n\n原因:\n{error}",
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "CSV読み込み完了",
+            f"パラメータ条件を読み込みました。\n\n読み込み元:\n{file_path}",
+        )
 
     def show_generation_error(self, error: Exception) -> None:
         QMessageBox.critical(
