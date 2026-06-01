@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 
+import numpy as np
 from PySide6.QtWidgets import (
     QApplication,
     QGridLayout,
@@ -10,12 +11,16 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
+
+from dep_cm_sim.equations import calculate_cm_factor_real
+from dep_cm_sim.gui.graph_window import GraphWindow
 
 
 @dataclass(frozen=True)
@@ -109,9 +114,11 @@ class ParameterWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("DEP CM Factor Simulator - Parameter Window")
-        self.resize(1100, 500)
+        self.resize(1200, 550)
 
         self.input_widgets: dict[str, QLineEdit] = {}
+        self.graph_window: GraphWindow | None = None
+        self.extra_graph_windows: list[GraphWindow] = []
 
         central_widget = QWidget()
         layout = QVBoxLayout()
@@ -147,9 +154,17 @@ class ParameterWindow(QMainWindow):
         read_button.clicked.connect(self.print_parameters)
         button_layout.addWidget(read_button, 0, 0)
 
+        overlay_button = QPushButton("現在のグラフに重ねる")
+        overlay_button.clicked.connect(self.plot_on_current_graph)
+        button_layout.addWidget(overlay_button, 0, 1)
+
+        new_window_button = QPushButton("新しいWindowで表示")
+        new_window_button.clicked.connect(self.plot_on_new_graph_window)
+        button_layout.addWidget(new_window_button, 0, 2)
+
         reset_button = QPushButton("既定値に戻す")
         reset_button.clicked.connect(self.reset_parameters)
-        button_layout.addWidget(reset_button, 0, 1)
+        button_layout.addWidget(reset_button, 0, 3)
 
         layout.addLayout(button_layout)
 
@@ -167,6 +182,76 @@ class ParameterWindow(QMainWindow):
                 parameters[parameter.key] = float(raw_value)
 
         return parameters
+
+    def validate_parameters(self, parameters: dict[str, float | int]) -> None:
+        f_min = float(parameters["f_min"])
+        f_max = float(parameters["f_max"])
+        num_points = int(parameters["num_points"])
+
+        if f_min <= 0:
+            raise ValueError("最小周波数 f_min は0より大きい値にしてください。")
+        if f_max <= 0:
+            raise ValueError("最大周波数 f_max は0より大きい値にしてください。")
+        if f_min >= f_max:
+            raise ValueError("最大周波数 f_max は最小周波数 f_min より大きい値にしてください。")
+        if num_points < 2:
+            raise ValueError("計算点数 N は2以上にしてください。")
+
+    def calculate_curve(self) -> tuple[np.ndarray, np.ndarray, str]:
+        parameters = self.read_parameters()
+        self.validate_parameters(parameters)
+
+        frequency_hz = np.logspace(
+            np.log10(float(parameters["f_min"])),
+            np.log10(float(parameters["f_max"])),
+            int(parameters["num_points"]),
+        )
+
+        cm_factor_real = calculate_cm_factor_real(
+            frequency_hz=frequency_hz,
+            membrane_capacitance=float(parameters["membrane_capacitance"]),
+            radius_m=float(parameters["radius_m"]),
+            eps_c_relative=float(parameters["eps_c_relative"]),
+            eps_s_relative=float(parameters["eps_s_relative"]),
+            sigma_c=float(parameters["sigma_c"]),
+            sigma_s=float(parameters["sigma_s"]),
+        )
+
+        label = f"sigma_s={float(parameters['sigma_s']):.2e} S/m"
+        return frequency_hz, cm_factor_real, label
+
+    def plot_on_current_graph(self) -> None:
+        try:
+            frequency_hz, cm_factor_real, label = self.calculate_curve()
+
+            if self.graph_window is None:
+                self.graph_window = GraphWindow()
+
+            self.graph_window.add_curve(frequency_hz, cm_factor_real, label)
+            self.graph_window.show()
+
+        except Exception as error:
+            self.show_generation_error(error)
+
+    def plot_on_new_graph_window(self) -> None:
+        try:
+            frequency_hz, cm_factor_real, label = self.calculate_curve()
+
+            graph_window = GraphWindow()
+            graph_window.add_curve(frequency_hz, cm_factor_real, label)
+            graph_window.show()
+
+            self.extra_graph_windows.append(graph_window)
+
+        except Exception as error:
+            self.show_generation_error(error)
+
+    def show_generation_error(self, error: Exception) -> None:
+        QMessageBox.critical(
+            self,
+            "グラフ生成エラー",
+            f"グラフを生成できませんでした。\n\n入力値または計算条件を確認してください。\n\n原因:\n{error}",
+        )
 
     def print_parameters(self) -> None:
         try:
