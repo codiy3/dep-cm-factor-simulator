@@ -35,6 +35,7 @@ from dep_cm_sim.csv_export import ParameterSnapshot
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.experimental_data import load_experimental_data_from_csv
 from dep_cm_sim.gui.dep_force_window import DepForceWindow
+from dep_cm_sim.gui.experimental_data_window import ExperimentalDataWindow
 from dep_cm_sim.gui.graph_window import GraphWindow
 from dep_cm_sim.gui.value_format import (
     format_conductivity_s_m,
@@ -188,6 +189,7 @@ class ParameterWindow(QMainWindow):
         self.graph_window: GraphWindow | None = None
         self.extra_graph_windows: list[GraphWindow] = []
         self.dep_force_window: DepForceWindow | None = None
+        self.experimental_data_window: ExperimentalDataWindow | None = None
         self.cell_templates = load_available_cell_templates()
 
         central_widget = QWidget()
@@ -327,6 +329,10 @@ class ParameterWindow(QMainWindow):
             1,
             3,
         )
+
+        experimental_data_window_button = QPushButton("実験データ入力ウィンドウを開く")
+        experimental_data_window_button.clicked.connect(self.open_experimental_data_window)
+        button_layout.addWidget(experimental_data_window_button, 5, 0, 1, 3)
 
         layout.addLayout(button_layout)
 
@@ -820,6 +826,29 @@ class ParameterWindow(QMainWindow):
         self.dep_force_window.raise_()
         self.dep_force_window.activateWindow()
 
+    def open_experimental_data_window(self) -> None:
+        if self.experimental_data_window is None:
+            self.experimental_data_window = ExperimentalDataWindow(
+                overlay_callback=self.overlay_experimental_data,
+            )
+
+        self.experimental_data_window.show()
+        self.experimental_data_window.raise_()
+        self.experimental_data_window.activateWindow()
+
+    def overlay_experimental_data(self, experimental_data) -> None:  # noqa: ANN001
+        if self.graph_window is None:
+            self.graph_window = GraphWindow()
+
+        self.graph_window.add_experimental_data(
+            frequency_hz=experimental_data.frequency_hz,
+            values=experimental_data.values,
+            label=experimental_data.label,
+            plot_style=experimental_data.plot_style,
+        )
+        self.graph_window.show()
+
+
     def overlay_experimental_data_csv(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -836,16 +865,7 @@ class ParameterWindow(QMainWindow):
                 file_path
             )
 
-            if self.graph_window is None:
-                self.graph_window = GraphWindow()
-
-            self.graph_window.add_experimental_data(
-                frequency_hz=experimental_data.frequency_hz,
-                values=experimental_data.values,
-                label=experimental_data.label,
-                plot_style=experimental_data.plot_style,
-            )
-            self.graph_window.show()
+            self.overlay_experimental_data(experimental_data)
 
         except Exception as error:
             QMessageBox.critical(
