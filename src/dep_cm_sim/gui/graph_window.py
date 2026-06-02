@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from dep_cm_sim.optimization import find_optimal_frequency
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from PySide6.QtWidgets import (
@@ -18,6 +21,13 @@ from PySide6.QtWidgets import (
 )
 
 
+@dataclass
+class CurveData:
+    label: str
+    frequencies: object
+    values: object
+
+
 class GraphWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -28,6 +38,8 @@ class GraphWindow(QMainWindow):
         self.figure = Figure(figsize=(8, 5))
         self.canvas = FigureCanvas(self.figure)
         self.ax = self.figure.add_subplot(111)
+        self.curve_data_list: list[CurveData] = []
+        self.optimal_marker_handles: list[object] = []
 
         central_widget = QWidget()
         layout = QVBoxLayout()
@@ -39,6 +51,10 @@ class GraphWindow(QMainWindow):
         save_button = QPushButton("PNG保存")
         save_button.clicked.connect(self.save_png)
         button_layout.addWidget(save_button)
+
+        optimal_frequency_button = QPushButton("最適周波数を表示")
+        optimal_frequency_button.clicked.connect(self.show_optimal_frequency)
+        button_layout.addWidget(optimal_frequency_button)
 
         clear_button = QPushButton("グラフをクリア")
         clear_button.clicked.connect(self.clear_graph)
@@ -77,6 +93,13 @@ class GraphWindow(QMainWindow):
             raise ValueError("cm_factor_real must not contain NaN.")
 
         self.ax.plot(frequency_hz, cm_factor_real, label=label)
+        self.curve_data_list.append(
+            CurveData(
+                label=label,
+                frequencies=frequency_hz,
+                values=cm_factor_real,
+            )
+        )
         self.ax.legend()
         self.figure.tight_layout()
         self.canvas.draw()
@@ -118,9 +141,62 @@ class GraphWindow(QMainWindow):
 
     def clear_graph(self) -> None:
         self.ax.clear()
+        self.curve_data_list.clear()
+        self.optimal_marker_handles.clear()
         self._setup_axes()
         self.figure.tight_layout()
         self.canvas.draw()
 
     def show_error(self, message: str) -> None:
         QMessageBox.critical(self, "グラフ生成エラー", message)
+
+    def show_optimal_frequency(self) -> None:
+        if len(self.curve_data_list) != 2:
+            QMessageBox.warning(
+                self,
+                "最適周波数表示エラー",
+                "最適周波数は、グラフ上の曲線が2本の場合のみ表示できます。",
+            )
+            return
+
+        curve_1 = self.curve_data_list[0]
+        curve_2 = self.curve_data_list[1]
+
+        result = find_optimal_frequency(
+            curve_1.frequencies,
+            curve_1.values,
+            curve_2.values,
+        )
+
+        for handle in self.optimal_marker_handles:
+            try:
+                handle.remove()
+            except ValueError:
+                pass
+        self.optimal_marker_handles.clear()
+
+        vertical_line = self.ax.axvline(
+            result.frequency_hz,
+            linestyle="--",
+            label="_nolegend_",
+        )
+
+        annotation = self.ax.annotate(
+            (
+                f"f_opt = {result.frequency_hz:.2e} Hz\n"
+                f"|ΔRe[K]| = {result.difference:.3f}"
+            ),
+            xy=(result.frequency_hz, max(result.value_1, result.value_2)),
+            xytext=(0.05, 0.05),
+            textcoords="axes fraction",
+            bbox={
+                "boxstyle": "round",
+                "facecolor": "white",
+                "alpha": 0.8,
+            },
+        )
+
+        self.optimal_marker_handles.extend([vertical_line, annotation])
+        self.ax.legend()
+        self.canvas.draw()
+
