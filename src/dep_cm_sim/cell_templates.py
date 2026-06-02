@@ -102,3 +102,56 @@ def find_cell_template_by_name(
             return template
 
     return None
+
+
+USER_CELL_TEMPLATES_PATH = Path("templates/user_cell_templates.json")
+
+
+def load_user_cell_templates(
+    input_path: str | Path = USER_CELL_TEMPLATES_PATH,
+) -> list[CellTemplate]:
+    input_path = Path(input_path)
+
+    if not input_path.exists():
+        return []
+
+    return load_cell_templates_from_json(input_path)
+
+
+def load_available_cell_templates(
+    user_template_path: str | Path = USER_CELL_TEMPLATES_PATH,
+) -> list[CellTemplate]:
+    templates = get_default_cell_templates()
+    templates.extend(load_user_cell_templates(user_template_path))
+    return templates
+
+
+def save_user_cell_template(
+    template: CellTemplate,
+    output_path: str | Path = USER_CELL_TEMPLATES_PATH,
+) -> list[CellTemplate]:
+    output_path = Path(output_path)
+
+    templates = load_user_cell_templates(output_path)
+
+    existing_index = find_cell_template_index_by_name(templates, template.name)
+
+    if existing_index is None:
+        templates.append(template)
+    else:
+        templates[existing_index] = template
+
+    save_cell_templates_to_json(templates, output_path)
+
+    return templates
+
+
+def find_cell_template_index_by_name(
+    templates: list[CellTemplate],
+    name: str,
+) -> int | None:
+    for index, template in enumerate(templates):
+        if template.name == name:
+            return index
+
+    return None

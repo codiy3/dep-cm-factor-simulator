@@ -23,3 +23,6 @@ env/
 outputs/
 *.png
 *.csv
+
+# User-defined local templates
+templates/user_cell_templates.json
