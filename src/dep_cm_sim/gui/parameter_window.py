@@ -32,6 +32,7 @@ from dep_cm_sim.cell_templates import (
 from dep_cm_sim.condition_optimizer import find_optimal_solution_conductivity
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.experimental_data import load_experimental_data_from_csv
+from dep_cm_sim.gui.experimental_data_window import ExperimentalDataWindow
 from dep_cm_sim.gui.graph_window import GraphWindow
 from dep_cm_sim.paper_conditions import PAPER_FIGURE_SIGMA_S_CONDITIONS
 from dep_cm_sim.parameter_io import load_parameters_from_csv, save_parameters_to_csv
@@ -144,6 +145,7 @@ class ParameterWindow(QMainWindow):
         self.input_widgets: dict[str, QLineEdit] = {}
         self.graph_window: GraphWindow | None = None
         self.extra_graph_windows: list[GraphWindow] = []
+        self.experimental_data_window: ExperimentalDataWindow | None = None
         self.cell_templates = load_available_cell_templates()
 
         central_widget = QWidget()
@@ -269,6 +271,10 @@ class ParameterWindow(QMainWindow):
         experimental_csv_button = QPushButton("実験データCSVを重ね描き")
         experimental_csv_button.clicked.connect(self.overlay_experimental_data_csv)
         button_layout.addWidget(experimental_csv_button, 3, 0, 1, 3)
+
+        experimental_data_window_button = QPushButton("実験データ入力ウィンドウを開く")
+        experimental_data_window_button.clicked.connect(self.open_experimental_data_window)
+        button_layout.addWidget(experimental_data_window_button, 4, 0, 1, 3)
 
         layout.addLayout(button_layout)
 
@@ -679,6 +685,26 @@ class ParameterWindow(QMainWindow):
         except Exception as error:
             self.show_generation_error(error)
 
+    def open_experimental_data_window(self) -> None:
+        if self.experimental_data_window is None:
+            self.experimental_data_window = ExperimentalDataWindow(
+                overlay_callback=self.overlay_experimental_data,
+            )
+
+        self.experimental_data_window.show()
+
+    def overlay_experimental_data(self, experimental_data) -> None:  # noqa: ANN001
+        if self.graph_window is None:
+            self.graph_window = GraphWindow()
+
+        self.graph_window.add_experimental_data(
+            frequency_hz=experimental_data.frequency_hz,
+            values=experimental_data.values,
+            label=experimental_data.label,
+            plot_style=experimental_data.plot_style,
+        )
+        self.graph_window.show()
+
     def overlay_experimental_data_csv(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -693,16 +719,7 @@ class ParameterWindow(QMainWindow):
         try:
             experimental_data = load_experimental_data_from_csv(file_path)
 
-            if self.graph_window is None:
-                self.graph_window = GraphWindow()
-
-            self.graph_window.add_experimental_data(
-                frequency_hz=experimental_data.frequency_hz,
-                values=experimental_data.values,
-                label=experimental_data.label,
-                plot_style=experimental_data.plot_style,
-            )
-            self.graph_window.show()
+            self.overlay_experimental_data(experimental_data)
 
         except Exception as error:
             QMessageBox.critical(
