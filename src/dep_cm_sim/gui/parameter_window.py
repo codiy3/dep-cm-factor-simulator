@@ -31,6 +31,7 @@ from dep_cm_sim.cell_templates import (
 )
 from dep_cm_sim.condition_optimizer import find_optimal_solution_conductivity
 from dep_cm_sim.equations import calculate_cm_factor_real
+from dep_cm_sim.experimental_data import load_experimental_data_from_csv
 from dep_cm_sim.gui.graph_window import GraphWindow
 from dep_cm_sim.paper_conditions import PAPER_FIGURE_SIGMA_S_CONDITIONS
 from dep_cm_sim.parameter_io import load_parameters_from_csv, save_parameters_to_csv
@@ -264,6 +265,10 @@ class ParameterWindow(QMainWindow):
         paper_figure_button = QPushButton("論文図(a)〜(h)を再現")
         paper_figure_button.clicked.connect(self.plot_paper_figure_reproduction)
         button_layout.addWidget(paper_figure_button, 2, 0, 1, 3)
+
+        experimental_csv_button = QPushButton("実験データCSVを重ね描き")
+        experimental_csv_button.clicked.connect(self.overlay_experimental_data_csv)
+        button_layout.addWidget(experimental_csv_button, 3, 0, 1, 3)
 
         layout.addLayout(button_layout)
 
@@ -673,6 +678,37 @@ class ParameterWindow(QMainWindow):
 
         except Exception as error:
             self.show_generation_error(error)
+
+    def overlay_experimental_data_csv(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "実験データCSVを読み込み",
+            "",
+            "CSV files (*.csv)",
+        )
+
+        if not file_path:
+            return
+
+        try:
+            experimental_data = load_experimental_data_from_csv(file_path)
+
+            if self.graph_window is None:
+                self.graph_window = GraphWindow()
+
+            self.graph_window.add_experimental_data(
+                frequency_hz=experimental_data.frequency_hz,
+                values=experimental_data.values,
+                label=experimental_data.label,
+            )
+            self.graph_window.show()
+
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "実験データCSV読み込みエラー",
+                f"実験データCSVを読み込めませんでした。\n\n原因:\n{error}",
+            )
 
     def save_parameters_csv(self) -> None:
         try:
