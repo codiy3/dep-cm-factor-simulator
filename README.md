@@ -153,6 +153,67 @@ GUIアプリケーションは以下で起動できます。
 
 ---
 
+# Cell Parameter Templates / 細胞パラメータテンプレート
+
+## English
+
+The application provides cell parameter templates for parameters that are relatively cell-specific:
+
+    membrane_capacitance
+    radius_m
+    eps_c_relative
+    sigma_c
+
+A default template, `reference_cell`, is available. Users can also save their own templates from the GUI.
+
+User-defined templates are saved locally to:
+
+    templates/user_cell_templates.json
+
+This file is excluded from Git tracking so that local experimental or user-specific settings are not committed accidentally.
+
+Cell templates do not include solution or simulation settings such as:
+
+    sigma_s
+    eps_s_relative
+    f_min
+    f_max
+    num_points
+    graph_label
+
+These values are treated as experimental or plotting conditions rather than cell-specific properties.
+
+## 日本語
+
+本アプリケーションでは、細胞ごとに比較的一定になりやすい以下のパラメータを、細胞テンプレートとして管理できます。
+
+    membrane_capacitance
+    radius_m
+    eps_c_relative
+    sigma_c
+
+デフォルトテンプレートとして `reference_cell` が用意されています。また、GUI上からユーザー自身のテンプレートを保存できます。
+
+ユーザー定義テンプレートはローカルに以下のファイルとして保存されます。
+
+    templates/user_cell_templates.json
+
+このファイルはGit管理対象外にしているため、ローカルの実験条件やユーザー固有設定を誤ってコミットしにくくしています。
+
+細胞テンプレートには、以下のような溶液条件・シミュレーション条件は含めません。
+
+    sigma_s
+    eps_s_relative
+    f_min
+    f_max
+    num_points
+    graph_label
+
+これらは細胞固有値ではなく、実験条件または描画条件として扱います。
+
+
+---
+
 # CSV Save and Load / CSV保存・読み込み
 
 ## English
@@ -212,6 +273,41 @@ Example:
 例:
 
     condition_A
+
+---
+
+# Optimal Frequency Display / 最適周波数表示
+
+## English
+
+When exactly two curves are displayed in the graph window, the application can calculate and display the frequency where the two curves differ the most.
+
+The optimal frequency is defined as the frequency that maximizes:
+
+    |Re[K]_1 - Re[K]_2|
+
+The result is shown on the graph as:
+
+- a vertical dashed line at the optimal frequency
+- an annotation showing `f_opt` and `|ΔRe[K]|`
+
+This feature is intended to support visual comparison of two DEP response curves.
+
+## 日本語
+
+グラフWindow上に曲線が2本だけ表示されている場合、2曲線の差が最大となる周波数を計算し、グラフ上に表示できます。
+
+本アプリケーションでは、最適周波数を以下が最大となる周波数として定義しています。
+
+    |Re[K]_1 - Re[K]_2|
+
+結果はグラフ上に以下の形で表示されます。
+
+- 最適周波数位置の破線
+- `f_opt` と `|ΔRe[K]|` を示す注釈
+
+この機能は、2つのDEP応答曲線を比較するための補助機能です。
+
 
 ---
 
@@ -381,14 +477,18 @@ lintを実行します。
 
     dep-cm-factor-simulator/
     - src/dep_cm_sim/equations.py
+    - src/dep_cm_sim/cell_templates.py
     - src/dep_cm_sim/plotter.py
     - src/dep_cm_sim/demo_plot.py
     - src/dep_cm_sim/reproduce_paper_figure.py
     - src/dep_cm_sim/parameter_io.py
+    - src/dep_cm_sim/optimization.py
     - src/dep_cm_sim/paper_conditions.py
     - src/dep_cm_sim/gui/parameter_window.py
     - src/dep_cm_sim/gui/graph_window.py
     - tests/test_equations.py
+    - tests/test_cell_templates.py
+    - tests/test_optimization.py
     - tests/test_parameter_io.py
     - pyproject.toml
     - uv.lock
