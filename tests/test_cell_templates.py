@@ -4,6 +4,7 @@ import pytest
 
 from dep_cm_sim.cell_templates import (
     CellTemplate,
+    delete_user_cell_template_by_name,
     find_cell_template_by_name,
     get_default_cell_templates,
     load_cell_templates_from_json,
@@ -219,3 +220,90 @@ def test_save_user_cell_template_overwrites_existing_template(tmp_path: Path) ->
 
     assert templates == [updated_template]
     assert load_user_cell_templates(user_template_path) == [updated_template]
+
+
+
+def test_delete_user_cell_template_by_name_deletes_matching_template(
+    tmp_path: Path,
+) -> None:
+    user_template_path = tmp_path / "user_cell_templates.json"
+    template = CellTemplate(
+        name="delete_target_cell",
+        membrane_capacitance=0.015,
+        radius_m=6.7e-6,
+        eps_c_relative=60.0,
+        sigma_c=0.5,
+    )
+
+    save_cell_templates_to_json([template], user_template_path)
+
+    templates = delete_user_cell_template_by_name(
+        "delete_target_cell",
+        user_template_path,
+    )
+
+    assert templates == []
+    assert load_user_cell_templates(user_template_path) == []
+
+
+def test_delete_user_cell_template_by_name_deletes_only_matching_template(
+    tmp_path: Path,
+) -> None:
+    user_template_path = tmp_path / "user_cell_templates.json"
+    template_a = CellTemplate(
+        name="keep_cell",
+        membrane_capacitance=0.015,
+        radius_m=6.7e-6,
+        eps_c_relative=60.0,
+        sigma_c=0.5,
+    )
+    template_b = CellTemplate(
+        name="delete_cell",
+        membrane_capacitance=0.02,
+        radius_m=7.0e-6,
+        eps_c_relative=55.0,
+        sigma_c=0.4,
+    )
+
+    save_cell_templates_to_json([template_a, template_b], user_template_path)
+
+    templates = delete_user_cell_template_by_name("delete_cell", user_template_path)
+
+    assert templates == [template_a]
+    assert load_user_cell_templates(user_template_path) == [template_a]
+
+
+def test_delete_user_cell_template_by_name_rejects_empty_name(
+    tmp_path: Path,
+) -> None:
+    user_template_path = tmp_path / "user_cell_templates.json"
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        delete_user_cell_template_by_name(" ", user_template_path)
+
+
+def test_delete_user_cell_template_by_name_rejects_missing_file(
+    tmp_path: Path,
+) -> None:
+    user_template_path = tmp_path / "missing_user_cell_templates.json"
+
+    with pytest.raises(FileNotFoundError):
+        delete_user_cell_template_by_name("missing_cell", user_template_path)
+
+
+def test_delete_user_cell_template_by_name_rejects_missing_template(
+    tmp_path: Path,
+) -> None:
+    user_template_path = tmp_path / "user_cell_templates.json"
+    template = CellTemplate(
+        name="existing_cell",
+        membrane_capacitance=0.015,
+        radius_m=6.7e-6,
+        eps_c_relative=60.0,
+        sigma_c=0.5,
+    )
+
+    save_cell_templates_to_json([template], user_template_path)
+
+    with pytest.raises(ValueError, match="not found"):
+        delete_user_cell_template_by_name("missing_cell", user_template_path)

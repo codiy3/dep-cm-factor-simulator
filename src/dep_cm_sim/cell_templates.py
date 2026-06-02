@@ -155,3 +155,29 @@ def find_cell_template_index_by_name(
             return index
 
     return None
+
+
+def delete_user_cell_template_by_name(
+    name: str,
+    input_path: str | Path = USER_CELL_TEMPLATES_PATH,
+) -> list[CellTemplate]:
+    name = name.strip()
+
+    if not name:
+        raise ValueError("Cell template name must not be empty.")
+
+    input_path = Path(input_path)
+
+    if not input_path.exists():
+        raise FileNotFoundError(f"Cell template file not found: {input_path}")
+
+    templates = load_user_cell_templates(input_path)
+    target_index = find_cell_template_index_by_name(templates, name)
+
+    if target_index is None:
+        raise ValueError(f"User-defined cell template not found: {name}")
+
+    del templates[target_index]
+    save_cell_templates_to_json(templates, input_path)
+
+    return templates
