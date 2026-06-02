@@ -29,6 +29,7 @@ from dep_cm_sim.cell_templates import (
     load_available_cell_templates,
     save_user_cell_template,
 )
+from dep_cm_sim.condition_optimizer import find_optimal_solution_conductivity
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.gui.graph_window import GraphWindow
 from dep_cm_sim.paper_conditions import PAPER_FIGURE_SIGMA_S_CONDITIONS
@@ -195,6 +196,45 @@ class ParameterWindow(QMainWindow):
 
         layout.addLayout(template_layout)
 
+        optimizer_layout = QGridLayout()
+
+        optimizer_title = QLabel("2細胞テンプレート間の最適溶液導電率探索")
+        optimizer_layout.addWidget(optimizer_title, 0, 0, 1, 4)
+
+        optimizer_layout.addWidget(QLabel("細胞テンプレート1"), 1, 0)
+        self.optimizer_cell_1_combo = QComboBox()
+        optimizer_layout.addWidget(self.optimizer_cell_1_combo, 1, 1)
+
+        optimizer_layout.addWidget(QLabel("細胞テンプレート2"), 1, 2)
+        self.optimizer_cell_2_combo = QComboBox()
+        optimizer_layout.addWidget(self.optimizer_cell_2_combo, 1, 3)
+
+        optimizer_layout.addWidget(QLabel("sigma_s 最小値 [S/m]"), 2, 0)
+        self.optimizer_sigma_s_min_input = QLineEdit("1.0e-4")
+        optimizer_layout.addWidget(self.optimizer_sigma_s_min_input, 2, 1)
+
+        optimizer_layout.addWidget(QLabel("sigma_s 最大値 [S/m]"), 2, 2)
+        self.optimizer_sigma_s_max_input = QLineEdit("1.0")
+        optimizer_layout.addWidget(self.optimizer_sigma_s_max_input, 2, 3)
+
+        optimizer_layout.addWidget(QLabel("sigma_s 探索点数"), 3, 0)
+        self.optimizer_num_sigma_points_input = QLineEdit("20")
+        optimizer_layout.addWidget(self.optimizer_num_sigma_points_input, 3, 1)
+
+        optimizer_layout.addWidget(QLabel("最適化モード"), 3, 2)
+        self.optimizer_mode_combo = QComboBox()
+        self.optimizer_mode_combo.addItem("差分最大", "difference_only")
+        self.optimizer_mode_combo.addItem("符号分離", "opposite_sign")
+        optimizer_layout.addWidget(self.optimizer_mode_combo, 3, 3)
+
+        optimize_button = QPushButton("最適な溶液導電率を探索")
+        optimize_button.clicked.connect(self.optimize_solution_conductivity)
+        optimizer_layout.addWidget(optimize_button, 4, 0, 1, 4)
+
+        layout.addLayout(optimizer_layout)
+
+        self.refresh_optimizer_template_combos()
+
         button_layout = QGridLayout()
 
         read_button = QPushButton("入力値を読み取る")
@@ -234,6 +274,23 @@ class ParameterWindow(QMainWindow):
 
         for template in self.cell_templates:
             self.cell_template_combo.addItem(template.name)
+
+        if hasattr(self, "optimizer_cell_1_combo") and hasattr(
+            self,
+            "optimizer_cell_2_combo",
+        ):
+            self.refresh_optimizer_template_combos()
+
+    def refresh_optimizer_template_combos(self) -> None:
+        self.optimizer_cell_1_combo.clear()
+        self.optimizer_cell_2_combo.clear()
+
+        for template in self.cell_templates:
+            self.optimizer_cell_1_combo.addItem(template.name)
+            self.optimizer_cell_2_combo.addItem(template.name)
+
+        if self.optimizer_cell_2_combo.count() >= 2:
+            self.optimizer_cell_2_combo.setCurrentIndex(1)
 
     def apply_selected_cell_template(self) -> None:
         template_name = self.cell_template_combo.currentText()
@@ -361,6 +418,133 @@ class ParameterWindow(QMainWindow):
             self,
             "テンプレート保存完了",
             f"細胞テンプレートを保存しました。\n\nテンプレート名:\n{template_name}",
+        )
+
+    def optimize_solution_conductivity(self) -> None:
+        cell_1_name = self.optimizer_cell_1_combo.currentText().strip()
+        cell_2_name = self.optimizer_cell_2_combo.currentText().strip()
+
+        cell_1 = find_cell_template_by_name(self.cell_templates, cell_1_name)
+        cell_2 = find_cell_template_by_name(self.cell_templates, cell_2_name)
+
+        if cell_1 is None or cell_2 is None:
+            QMessageBox.warning(
+                self,
+                "最適化エラー",
+                "選択された細胞テンプレートが見つかりません。",
+            )
+            return
+
+        try:
+            parameters = self.read_parameters()
+
+            eps_s_relative = float(parameters["eps_s_relative"])
+            f_min = float(parameters["f_min"])
+            f_max = float(parameters["f_max"])
+            num_frequency_points = int(parameters["num_points"])
+
+            sigma_s_min = float(self.optimizer_sigma_s_min_input.text())
+            sigma_s_max = float(self.optimizer_sigma_s_max_input.text())
+            num_sigma_points = int(float(self.optimizer_num_sigma_points_input.text()))
+            optimization_mode = self.optimizer_mode_combo.currentData()
+
+            result = find_optimal_solution_conductivity(
+                cell_1=cell_1,
+                cell_2=cell_2,
+                eps_s_relative=eps_s_relative,
+                sigma_s_min=sigma_s_min,
+                sigma_s_max=sigma_s_max,
+                num_sigma_points=num_sigma_points,
+                f_min=f_min,
+                f_max=f_max,
+                num_frequency_points=num_frequency_points,
+                optimization_mode=optimization_mode,
+            )
+
+            frequency_hz = np.logspace(
+                np.log10(f_min),
+                np.log10(f_max),
+                num_frequency_points,
+            )
+
+            values_1 = calculate_cm_factor_real(
+                frequency_hz=frequency_hz,
+                membrane_capacitance=cell_1.membrane_capacitance,
+                radius_m=cell_1.radius_m,
+                eps_c_relative=cell_1.eps_c_relative,
+                eps_s_relative=eps_s_relative,
+                sigma_c=cell_1.sigma_c,
+                sigma_s=result.optimal_sigma_s,
+            )
+            values_2 = calculate_cm_factor_real(
+                frequency_hz=frequency_hz,
+                membrane_capacitance=cell_2.membrane_capacitance,
+                radius_m=cell_2.radius_m,
+                eps_c_relative=cell_2.eps_c_relative,
+                eps_s_relative=eps_s_relative,
+                sigma_c=cell_2.sigma_c,
+                sigma_s=result.optimal_sigma_s,
+            )
+
+            graph_window = GraphWindow()
+            graph_window.add_curve(
+                frequency_hz,
+                values_1,
+                f"{cell_1.name} at sigma_s={result.optimal_sigma_s:.2e} S/m",
+            )
+            graph_window.add_curve(
+                frequency_hz,
+                values_2,
+                f"{cell_2.name} at sigma_s={result.optimal_sigma_s:.2e} S/m",
+            )
+            graph_window.show_optimization_result_marker(
+                frequency_hz=result.optimal_frequency_hz,
+                value_1=result.value_1_at_optimum,
+                value_2=result.value_2_at_optimum,
+                difference=result.max_difference,
+                label=result.optimization_mode,
+            )
+            graph_window.show()
+            self.extra_graph_windows.append(graph_window)
+
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "最適化エラー",
+                f"最適な溶液導電率を探索できませんでした。\n\n原因:\n{error}",
+            )
+            return
+
+        boundary_warning = ""
+        if result.is_boundary_optimum:
+            boundary_label = "下限" if result.boundary_side == "lower" else "上限"
+            boundary_warning = (
+                "\n\n注意: 最適 sigma_s が探索範囲の"
+                f"{boundary_label}にあります。"
+                "\n探索範囲を広げると、より良い条件が見つかる可能性があります。"
+            )
+
+        mode_label = (
+            "符号分離"
+            if result.optimization_mode == "opposite_sign"
+            else "差分最大"
+        )
+
+        QMessageBox.information(
+            self,
+            "最適化完了",
+            (
+                "最適な溶液導電率を探索しました。\n\n"
+                f"最適化モード: {mode_label}\n"
+                f"細胞テンプレート1: {cell_1.name}\n"
+                f"細胞テンプレート2: {cell_2.name}\n"
+                f"最適 sigma_s: {result.optimal_sigma_s:.4e} S/m\n"
+                f"最適周波数 f_opt: {result.optimal_frequency_hz:.4e} Hz\n"
+                f"最大 |ΔRe[K]|: {result.max_difference:.4f}\n"
+                f"{cell_1.name} Re[K]: {result.value_1_at_optimum:.4f}\n"
+                f"{cell_2.name} Re[K]: {result.value_2_at_optimum:.4f}"
+                f"{boundary_warning}"
+            ),
         )
 
     def read_parameters(self) -> dict[str, float | int | str]:

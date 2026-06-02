@@ -147,6 +147,50 @@ class GraphWindow(QMainWindow):
         self.figure.tight_layout()
         self.canvas.draw()
 
+    def show_optimization_result_marker(
+        self,
+        frequency_hz: float,
+        value_1: float,
+        value_2: float,
+        difference: float,
+        label: str = "optimal",
+    ) -> None:
+        for handle in self.optimal_marker_handles:
+            try:
+                handle.remove()
+            except ValueError:
+                pass
+        self.optimal_marker_handles.clear()
+
+        vertical_line = self.ax.axvline(
+            frequency_hz,
+            linestyle="--",
+            label="_nolegend_",
+        )
+
+        annotation = self.ax.annotate(
+            (
+                f"f_opt = {frequency_hz:.2e} Hz\n"
+                f"|ΔRe[K]| = {difference:.3f}\n"
+                f"Re[K]1 = {value_1:.3f}\n"
+                f"Re[K]2 = {value_2:.3f}\n"
+                f"mode = {label}"
+            ),
+            xy=(frequency_hz, max(value_1, value_2)),
+            xytext=(0.05, 0.05),
+            textcoords="axes fraction",
+            bbox={
+                "boxstyle": "round",
+                "facecolor": "white",
+                "alpha": 0.8,
+            },
+        )
+
+        self.optimal_marker_handles.extend([vertical_line, annotation])
+        self.ax.legend()
+        self.figure.tight_layout()
+        self.canvas.draw()
+
     def show_error(self, message: str) -> None:
         QMessageBox.critical(self, "グラフ生成エラー", message)
 
