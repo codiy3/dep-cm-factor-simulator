@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 
 from dep_cm_sim.cell_templates import (
     CellTemplate,
+    delete_user_cell_template_by_name,
     find_cell_template_by_name,
     load_available_cell_templates,
     save_user_cell_template,
@@ -188,6 +189,10 @@ class ParameterWindow(QMainWindow):
         save_template_button.clicked.connect(self.save_current_cell_template)
         template_layout.addWidget(save_template_button, 1, 0, 1, 3)
 
+        delete_template_button = QPushButton("選択中のユーザーテンプレートを削除")
+        delete_template_button.clicked.connect(self.delete_selected_cell_template)
+        template_layout.addWidget(delete_template_button, 2, 0, 1, 3)
+
         layout.addLayout(template_layout)
 
         button_layout = QGridLayout()
@@ -253,6 +258,55 @@ class ParameterWindow(QMainWindow):
             self,
             "テンプレート適用完了",
             f"細胞テンプレートを適用しました。\\n\\nテンプレート名:\\n{template.name}",
+        )
+
+    def delete_selected_cell_template(self) -> None:
+        template_name = self.cell_template_combo.currentText().strip()
+
+        if not template_name:
+            QMessageBox.warning(
+                self,
+                "テンプレート削除エラー",
+                "削除するテンプレートが選択されていません。",
+            )
+            return
+
+        if template_name == "reference_cell":
+            QMessageBox.warning(
+                self,
+                "テンプレート削除エラー",
+                "デフォルトテンプレート reference_cell は削除できません。",
+            )
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "テンプレート削除確認",
+            f"ユーザー定義テンプレートを削除しますか？\n\nテンプレート名:\n{template_name}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            delete_user_cell_template_by_name(template_name)
+            self.cell_templates = load_available_cell_templates()
+            self.refresh_cell_template_combo()
+
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "テンプレート削除エラー",
+                f"テンプレートを削除できませんでした。\n\n原因:\n{error}",
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "テンプレート削除完了",
+            f"ユーザー定義テンプレートを削除しました。\n\nテンプレート名:\n{template_name}",
         )
 
     def save_current_cell_template(self) -> None:
