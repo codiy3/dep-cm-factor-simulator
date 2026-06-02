@@ -6,8 +6,10 @@ from dataclasses import dataclass
 import numpy as np
 from PySide6.QtWidgets import (
     QApplication,
+    QComboBox,
     QFileDialog,
     QGridLayout,
+    QInputDialog,
     QHeaderView,
     QLabel,
     QLineEdit,
@@ -20,6 +22,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from dep_cm_sim.cell_templates import (
+    CellTemplate,
+    find_cell_template_by_name,
+    load_available_cell_templates,
+    save_user_cell_template,
+)
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.gui.graph_window import GraphWindow
 from dep_cm_sim.paper_conditions import PAPER_FIGURE_SIGMA_S_CONDITIONS
@@ -133,6 +141,7 @@ class ParameterWindow(QMainWindow):
         self.input_widgets: dict[str, QLineEdit] = {}
         self.graph_window: GraphWindow | None = None
         self.extra_graph_windows: list[GraphWindow] = []
+        self.cell_templates = load_available_cell_templates()
 
         central_widget = QWidget()
         layout = QVBoxLayout()
@@ -161,6 +170,25 @@ class ParameterWindow(QMainWindow):
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         layout.addWidget(self.table)
+
+        template_layout = QGridLayout()
+
+        template_label = QLabel("細胞テンプレート")
+        template_layout.addWidget(template_label, 0, 0)
+
+        self.cell_template_combo = QComboBox()
+        self.refresh_cell_template_combo()
+        template_layout.addWidget(self.cell_template_combo, 0, 1)
+
+        apply_template_button = QPushButton("テンプレートを適用")
+        apply_template_button.clicked.connect(self.apply_selected_cell_template)
+        template_layout.addWidget(apply_template_button, 0, 2)
+
+        save_template_button = QPushButton("現在の細胞パラメータをテンプレート保存")
+        save_template_button.clicked.connect(self.save_current_cell_template)
+        template_layout.addWidget(save_template_button, 1, 0, 1, 3)
+
+        layout.addLayout(template_layout)
 
         button_layout = QGridLayout()
 
@@ -195,6 +223,91 @@ class ParameterWindow(QMainWindow):
         layout.addLayout(button_layout)
 
         self.setCentralWidget(central_widget)
+
+    def refresh_cell_template_combo(self) -> None:
+        self.cell_template_combo.clear()
+
+        for template in self.cell_templates:
+            self.cell_template_combo.addItem(template.name)
+
+    def apply_selected_cell_template(self) -> None:
+        template_name = self.cell_template_combo.currentText()
+        template = find_cell_template_by_name(self.cell_templates, template_name)
+
+        if template is None:
+            QMessageBox.warning(
+                self,
+                "テンプレート適用エラー",
+                f"選択されたテンプレートが見つかりません: {template_name}",
+            )
+            return
+
+        self.input_widgets["membrane_capacitance"].setText(
+            str(template.membrane_capacitance)
+        )
+        self.input_widgets["radius_m"].setText(str(template.radius_m))
+        self.input_widgets["eps_c_relative"].setText(str(template.eps_c_relative))
+        self.input_widgets["sigma_c"].setText(str(template.sigma_c))
+
+        QMessageBox.information(
+            self,
+            "テンプレート適用完了",
+            f"細胞テンプレートを適用しました。\\n\\nテンプレート名:\\n{template.name}",
+        )
+
+    def save_current_cell_template(self) -> None:
+        template_name, ok = QInputDialog.getText(
+            self,
+            "細胞テンプレート保存",
+            "テンプレート名を入力してください:",
+        )
+
+        if not ok:
+            return
+
+        template_name = template_name.strip()
+
+        if not template_name:
+            QMessageBox.warning(
+                self,
+                "テンプレート保存エラー",
+                "テンプレート名を入力してください。",
+            )
+            return
+
+        try:
+            parameters = self.read_parameters()
+
+            template = CellTemplate(
+                name=template_name,
+                membrane_capacitance=float(parameters["membrane_capacitance"]),
+                radius_m=float(parameters["radius_m"]),
+                eps_c_relative=float(parameters["eps_c_relative"]),
+                sigma_c=float(parameters["sigma_c"]),
+                description="User-defined cell parameter template",
+            )
+
+            save_user_cell_template(template)
+            self.cell_templates = load_available_cell_templates()
+            self.refresh_cell_template_combo()
+
+            index = self.cell_template_combo.findText(template.name)
+            if index >= 0:
+                self.cell_template_combo.setCurrentIndex(index)
+
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "テンプレート保存エラー",
+                f"テンプレートを保存できませんでした。\n\n原因:\n{error}",
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "テンプレート保存完了",
+            f"細胞テンプレートを保存しました。\n\nテンプレート名:\n{template_name}",
+        )
 
     def read_parameters(self) -> dict[str, float | int | str]:
         parameters: dict[str, float | int | str] = {}
