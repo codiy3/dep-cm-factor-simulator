@@ -700,6 +700,7 @@ class ParameterWindow(QMainWindow):
                 frequency_hz=experimental_data.frequency_hz,
                 values=experimental_data.values,
                 label=experimental_data.label,
+                plot_style=experimental_data.plot_style,
             )
             self.graph_window.show()
 

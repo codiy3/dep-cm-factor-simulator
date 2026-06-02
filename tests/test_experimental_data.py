@@ -118,3 +118,44 @@ def test_validate_experimental_data_rejects_empty_label() -> None:
             values=np.array([0.1, 0.2]),
             label="",
         )
+
+
+def test_load_experimental_data_from_csv_with_plot_style(tmp_path: Path) -> None:
+    csv_path = tmp_path / "experiment_line.csv"
+    csv_path.write_text(
+        "frequency_hz,value,label,plot_style\n"
+        "1.0,0.1,exp_A,line\n"
+        "10.0,0.2,exp_A,line\n",
+        encoding="utf-8",
+    )
+
+    data = load_experimental_data_from_csv(csv_path)
+
+    assert data.label == "exp_A"
+    assert data.plot_style == "line"
+
+
+def test_load_experimental_data_from_csv_uses_scatter_as_default_plot_style(
+    tmp_path: Path,
+) -> None:
+    csv_path = tmp_path / "experiment_default_style.csv"
+    csv_path.write_text(
+        "frequency_hz,value,label\n"
+        "1.0,0.1,exp_A\n"
+        "10.0,0.2,exp_A\n",
+        encoding="utf-8",
+    )
+
+    data = load_experimental_data_from_csv(csv_path)
+
+    assert data.plot_style == "scatter"
+
+
+def test_validate_experimental_data_rejects_invalid_plot_style() -> None:
+    with pytest.raises(ValueError, match="plot_style"):
+        validate_experimental_data(
+            frequency_hz=np.array([1.0, 10.0]),
+            values=np.array([0.1, 0.2]),
+            label="exp",
+            plot_style="invalid",
+        )

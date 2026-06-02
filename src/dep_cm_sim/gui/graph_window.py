@@ -109,6 +109,7 @@ class GraphWindow(QMainWindow):
         frequency_hz: NDArray[np.float64],
         values: NDArray[np.float64],
         label: str,
+        plot_style: str = "scatter",
     ) -> None:
         if frequency_hz.size == 0:
             raise ValueError("frequency_hz must not be empty.")
@@ -124,12 +125,17 @@ class GraphWindow(QMainWindow):
             raise ValueError("values must not contain NaN.")
         if not label.strip():
             raise ValueError("label must not be empty.")
+        if plot_style not in {"scatter", "line", "scatter_line"}:
+            raise ValueError("plot_style must be scatter, line, or scatter_line.")
 
-        self.ax.scatter(
-            frequency_hz,
-            values,
-            label=f"experimental: {label}",
-        )
+        legend_label = f"experimental: {label}"
+
+        if plot_style == "scatter":
+            self.ax.scatter(frequency_hz, values, label=legend_label)
+        elif plot_style == "line":
+            self.ax.plot(frequency_hz, values, label=legend_label)
+        else:
+            self.ax.plot(frequency_hz, values, marker="o", label=legend_label)
         self.ax.legend()
         self.figure.tight_layout()
         self.canvas.draw()
