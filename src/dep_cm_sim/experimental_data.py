@@ -122,3 +122,26 @@ def validate_experimental_data(
             "plot_style must be one of: "
             + ", ".join(sorted(ALLOWED_EXPERIMENTAL_PLOT_STYLES))
         )
+
+
+
+def save_experimental_data_to_csv(
+    data: ExperimentalData,
+    path: str | Path,
+) -> None:
+    validate_experimental_data(
+        frequency_hz=data.frequency_hz,
+        values=data.values,
+        label=data.label,
+        plot_style=data.plot_style,
+    )
+
+    csv_path = Path(path)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with csv_path.open("w", encoding="utf-8", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["frequency_hz", "value", "label", "plot_style"])
+
+        for frequency, value in zip(data.frequency_hz, data.values, strict=True):
+            writer.writerow([frequency, value, data.label, data.plot_style])

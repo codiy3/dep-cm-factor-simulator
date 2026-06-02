@@ -159,3 +159,27 @@ def test_validate_experimental_data_rejects_invalid_plot_style() -> None:
             label="exp",
             plot_style="invalid",
         )
+
+
+def test_save_experimental_data_to_csv_and_load_again(tmp_path: Path) -> None:
+    from dep_cm_sim.experimental_data import (
+        ExperimentalData,
+        save_experimental_data_to_csv,
+    )
+
+    csv_path = tmp_path / "saved_experiment.csv"
+
+    data = ExperimentalData(
+        frequency_hz=np.array([1.0, 10.0, 100.0]),
+        values=np.array([0.1, 0.2, 0.3]),
+        label="saved_exp",
+        plot_style="scatter_line",
+    )
+
+    save_experimental_data_to_csv(data, csv_path)
+    loaded = load_experimental_data_from_csv(csv_path)
+
+    assert loaded.label == "saved_exp"
+    assert loaded.plot_style == "scatter_line"
+    np.testing.assert_allclose(loaded.frequency_hz, data.frequency_hz)
+    np.testing.assert_allclose(loaded.values, data.values)
