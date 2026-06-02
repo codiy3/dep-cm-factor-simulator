@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -8,6 +9,17 @@ from numpy.typing import NDArray
 from dep_cm_sim.cell_templates import CellTemplate
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.optimization import find_optimal_frequency
+
+OptimizationMode = Literal["difference_only", "opposite_sign"]
+
+
+@dataclass(frozen=True)
+class FrequencyOptimizationResult:
+    frequency_hz: float
+    index: int
+    value_1: float
+    value_2: float
+    difference: float
 
 
 @dataclass(frozen=True)
@@ -19,6 +31,9 @@ class SolutionConductivityOptimizationResult:
     value_2_at_optimum: float
     sigma_s_candidates: NDArray[np.float64]
     scores: NDArray[np.float64]
+    optimization_mode: OptimizationMode
+    is_boundary_optimum: bool
+    boundary_side: str | None
 
 
 def find_optimal_solution_conductivity(
@@ -31,6 +46,7 @@ def find_optimal_solution_conductivity(
     f_min: float,
     f_max: float,
     num_frequency_points: int,
+    optimization_mode: OptimizationMode = "difference_only",
 ) -> SolutionConductivityOptimizationResult:
     validate_solution_conductivity_optimization_inputs(
         eps_s_relative=eps_s_relative,
@@ -40,6 +56,7 @@ def find_optimal_solution_conductivity(
         f_min=f_min,
         f_max=f_max,
         num_frequency_points=num_frequency_points,
+        optimization_mode=optimization_mode,
     )
 
     sigma_s_candidates = np.logspace(
@@ -53,8 +70,8 @@ def find_optimal_solution_conductivity(
         num_frequency_points,
     )
 
-    scores = np.empty(num_sigma_points, dtype=np.float64)
-    best_result_index = 0
+    scores = np.full(num_sigma_points, np.nan, dtype=np.float64)
+    best_result_index: int | None = None
     best_frequency_hz = 0.0
     best_value_1 = 0.0
     best_value_2 = 0.0
@@ -80,11 +97,21 @@ def find_optimal_solution_conductivity(
             sigma_s=float(sigma_s),
         )
 
-        optimal_frequency_result = find_optimal_frequency(
-            frequency_hz,
-            values_1,
-            values_2,
-        )
+        if optimization_mode == "difference_only":
+            optimal_frequency_result = find_optimal_frequency(
+                frequency_hz,
+                values_1,
+                values_2,
+            )
+        else:
+            optimal_frequency_result = find_optimal_opposite_sign_frequency(
+                frequency_hz,
+                values_1,
+                values_2,
+            )
+
+        if optimal_frequency_result is None:
+            continue
 
         scores[index] = optimal_frequency_result.difference
 
@@ -95,6 +122,14 @@ def find_optimal_solution_conductivity(
             best_value_2 = optimal_frequency_result.value_2
             best_difference = optimal_frequency_result.difference
 
+    if best_result_index is None:
+        raise ValueError("No opposite-sign DEP condition was found in the search range.")
+
+    is_boundary_optimum, boundary_side = get_boundary_optimum_status(
+        best_result_index,
+        len(sigma_s_candidates),
+    )
+
     return SolutionConductivityOptimizationResult(
         optimal_sigma_s=float(sigma_s_candidates[best_result_index]),
         optimal_frequency_hz=best_frequency_hz,
@@ -103,7 +138,57 @@ def find_optimal_solution_conductivity(
         value_2_at_optimum=best_value_2,
         sigma_s_candidates=sigma_s_candidates,
         scores=scores,
+        optimization_mode=optimization_mode,
+        is_boundary_optimum=is_boundary_optimum,
+        boundary_side=boundary_side,
     )
+
+
+def find_optimal_opposite_sign_frequency(
+    frequencies: NDArray[np.float64],
+    values_1: NDArray[np.float64],
+    values_2: NDArray[np.float64],
+) -> FrequencyOptimizationResult | None:
+    if len(frequencies) == 0:
+        raise ValueError("frequencies must not be empty.")
+
+    if len(frequencies) != len(values_1) or len(frequencies) != len(values_2):
+        raise ValueError("frequencies, values_1, and values_2 must have the same length.")
+
+    opposite_sign_mask = ((values_1 > 0.0) & (values_2 < 0.0)) | (
+        (values_1 < 0.0) & (values_2 > 0.0)
+    )
+
+    if not np.any(opposite_sign_mask):
+        return None
+
+    differences = np.abs(values_1 - values_2)
+    masked_differences = np.where(opposite_sign_mask, differences, -np.inf)
+    index = int(np.argmax(masked_differences))
+
+    return FrequencyOptimizationResult(
+        frequency_hz=float(frequencies[index]),
+        index=index,
+        value_1=float(values_1[index]),
+        value_2=float(values_2[index]),
+        difference=float(differences[index]),
+    )
+
+
+def get_boundary_optimum_status(
+    best_result_index: int,
+    number_of_candidates: int,
+) -> tuple[bool, str | None]:
+    if number_of_candidates < 2:
+        raise ValueError("number_of_candidates must be greater than or equal to 2.")
+
+    if best_result_index == 0:
+        return True, "lower"
+
+    if best_result_index == number_of_candidates - 1:
+        return True, "upper"
+
+    return False, None
 
 
 def validate_solution_conductivity_optimization_inputs(
@@ -114,6 +199,7 @@ def validate_solution_conductivity_optimization_inputs(
     f_min: float,
     f_max: float,
     num_frequency_points: int,
+    optimization_mode: OptimizationMode = "difference_only",
 ) -> None:
     if eps_s_relative <= 0:
         raise ValueError("eps_s_relative must be positive.")
@@ -135,3 +221,6 @@ def validate_solution_conductivity_optimization_inputs(
 
     if num_frequency_points < 2:
         raise ValueError("num_frequency_points must be greater than or equal to 2.")
+
+    if optimization_mode not in {"difference_only", "opposite_sign"}:
+        raise ValueError("optimization_mode must be 'difference_only' or 'opposite_sign'.")

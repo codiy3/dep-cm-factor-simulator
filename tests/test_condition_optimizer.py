@@ -3,7 +3,9 @@ import pytest
 
 from dep_cm_sim.cell_templates import CellTemplate
 from dep_cm_sim.condition_optimizer import (
+    find_optimal_opposite_sign_frequency,
     find_optimal_solution_conductivity,
+    get_boundary_optimum_status,
     validate_solution_conductivity_optimization_inputs,
 )
 
@@ -102,3 +104,112 @@ def test_validate_solution_conductivity_optimization_inputs_rejects_invalid_valu
 
     with pytest.raises(ValueError, match=message):
         validate_solution_conductivity_optimization_inputs(**params)
+
+
+def test_find_optimal_solution_conductivity_supports_opposite_sign_mode() -> None:
+    cell_1 = make_cell_template("cell_1")
+    cell_2 = make_cell_template(
+        "cell_2",
+        membrane_capacitance=0.01,
+        sigma_c=0.2,
+    )
+
+    result = find_optimal_solution_conductivity(
+        cell_1=cell_1,
+        cell_2=cell_2,
+        eps_s_relative=80.0,
+        sigma_s_min=1.0e-4,
+        sigma_s_max=1.0,
+        num_sigma_points=8,
+        f_min=1.0,
+        f_max=1.0e10,
+        num_frequency_points=300,
+        optimization_mode="opposite_sign",
+    )
+
+    assert result.optimization_mode == "opposite_sign"
+    assert result.value_1_at_optimum * result.value_2_at_optimum < 0.0
+    assert result.max_difference > 0.0
+
+
+def test_find_optimal_solution_conductivity_reports_boundary_optimum() -> None:
+    cell_1 = make_cell_template("cell_1")
+    cell_2 = make_cell_template(
+        "cell_2",
+        membrane_capacitance=0.01,
+        sigma_c=0.2,
+    )
+
+    result = find_optimal_solution_conductivity(
+        cell_1=cell_1,
+        cell_2=cell_2,
+        eps_s_relative=80.0,
+        sigma_s_min=1.0e-4,
+        sigma_s_max=1.0,
+        num_sigma_points=8,
+        f_min=1.0,
+        f_max=1.0e8,
+        num_frequency_points=100,
+    )
+
+    if result.is_boundary_optimum:
+        assert result.boundary_side in {"lower", "upper"}
+    else:
+        assert result.boundary_side is None
+
+
+def test_find_optimal_opposite_sign_frequency_returns_none_without_opposite_sign() -> None:
+    frequencies = np.array([1.0, 10.0, 100.0])
+    values_1 = np.array([0.1, 0.2, 0.3])
+    values_2 = np.array([0.4, 0.5, 0.6])
+
+    result = find_optimal_opposite_sign_frequency(frequencies, values_1, values_2)
+
+    assert result is None
+
+
+def test_find_optimal_opposite_sign_frequency_returns_best_opposite_sign_point() -> None:
+    frequencies = np.array([1.0, 10.0, 100.0])
+    values_1 = np.array([0.1, 0.8, -0.2])
+    values_2 = np.array([0.4, -0.5, 0.9])
+
+    result = find_optimal_opposite_sign_frequency(frequencies, values_1, values_2)
+
+    assert result is not None
+    assert result.frequency_hz == 10.0
+    assert result.difference == pytest.approx(1.3)
+
+
+def test_get_boundary_optimum_status_detects_lower_boundary() -> None:
+    is_boundary, side = get_boundary_optimum_status(0, 5)
+
+    assert is_boundary is True
+    assert side == "lower"
+
+
+def test_get_boundary_optimum_status_detects_upper_boundary() -> None:
+    is_boundary, side = get_boundary_optimum_status(4, 5)
+
+    assert is_boundary is True
+    assert side == "upper"
+
+
+def test_get_boundary_optimum_status_detects_internal_optimum() -> None:
+    is_boundary, side = get_boundary_optimum_status(2, 5)
+
+    assert is_boundary is False
+    assert side is None
+
+
+def test_validate_solution_conductivity_optimization_inputs_rejects_invalid_mode() -> None:
+    with pytest.raises(ValueError, match="optimization_mode"):
+        validate_solution_conductivity_optimization_inputs(
+            eps_s_relative=80.0,
+            sigma_s_min=1.0e-4,
+            sigma_s_max=1.0,
+            num_sigma_points=5,
+            f_min=1.0,
+            f_max=1.0e6,
+            num_frequency_points=50,
+            optimization_mode="invalid",  # type: ignore[arg-type]
+        )
