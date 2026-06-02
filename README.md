@@ -276,6 +276,299 @@ Example:
 
 ---
 
+# Solution Conductivity Optimization / 最適溶液導電率探索
+
+## English
+
+This application can numerically search for the solution conductivity `sigma_s` that improves separation performance between two selected cell templates.
+
+The optimization is designed for DEP-based cell separation. For each candidate `sigma_s`, the application calculates the real part of the Clausius-Mossotti factor, `Re[K]`, for two cells over a frequency range. The best condition is selected according to the selected optimization mode.
+
+## Purpose
+
+In dielectrophoresis, the sign and magnitude of `Re[K]` determine the direction and strength of the DEP response:
+
+- `Re[K] > 0`: positive DEP, where cells are attracted toward stronger electric fields
+- `Re[K] < 0`: negative DEP, where cells are repelled from stronger electric fields
+
+Therefore, simply maximizing the numerical difference between two curves is not always sufficient for practical separation. For selective trapping or separation, it is often important to find a condition where one cell shows positive DEP and the other shows negative DEP.
+
+## Input Parameters
+
+The optimization uses the following inputs:
+
+| Input | Meaning |
+|---|---|
+| Cell template 1 | First cell parameter template |
+| Cell template 2 | Second cell parameter template |
+| `eps_s_relative` | Relative permittivity of the solution |
+| `sigma_s_min` | Lower bound of solution conductivity search range |
+| `sigma_s_max` | Upper bound of solution conductivity search range |
+| `num_sigma_points` | Number of logarithmically spaced `sigma_s` candidates |
+| `f_min` | Lower bound of frequency range |
+| `f_max` | Upper bound of frequency range |
+| `num_frequency_points` | Number of logarithmically spaced frequency points |
+| Optimization mode | `difference_only` or `opposite_sign` |
+
+Cell-specific parameters are taken from the selected cell templates:
+
+    membrane_capacitance
+    radius_m
+    eps_c_relative
+    sigma_c
+
+Solution and simulation parameters are taken from the GUI input fields.
+
+## Numerical Search Design
+
+The optimization is implemented as a logarithmic grid search over candidate solution conductivities.
+
+Overall flow:
+
+1. Generate candidate solution conductivities.
+
+        sigma_s_candidates = logspace(log10(sigma_s_min), log10(sigma_s_max), num_sigma_points)
+
+2. Generate frequency points.
+
+        frequency_hz = logspace(log10(f_min), log10(f_max), num_frequency_points)
+
+3. For each candidate `sigma_s`, calculate two `Re[K]` curves.
+
+        Re[K]_1(f, sigma_s)
+        Re[K]_2(f, sigma_s)
+
+4. Evaluate the separation score according to the selected optimization mode.
+
+5. Select the `sigma_s` and frequency `f_opt` that produce the best score.
+
+Main implementation files:
+
+    src/dep_cm_sim/condition_optimizer.py
+    src/dep_cm_sim/gui/parameter_window.py
+    src/dep_cm_sim/gui/graph_window.py
+
+## Difference-only Mode
+
+The `difference_only` mode searches for the condition where the absolute difference between two `Re[K]` curves is maximized.
+
+For each candidate `sigma_s`, the application calculates:
+
+    score(f, sigma_s) = |Re[K]_1(f, sigma_s) - Re[K]_2(f, sigma_s)|
+
+Then it finds the frequency where the score is largest:
+
+    f_opt = argmax_f |Re[K]_1(f, sigma_s) - Re[K]_2(f, sigma_s)|
+
+Finally, it selects the `sigma_s` that gives the largest score over all candidates:
+
+    sigma_s_opt = argmax_sigma_s max_f |Re[K]_1(f, sigma_s) - Re[K]_2(f, sigma_s)|
+
+This mode is useful when the goal is to find the maximum numerical separation between two CM factor curves.
+
+However, this mode does not require the two DEP responses to have opposite signs. Therefore, both cells may still show positive DEP or both may show negative DEP at the optimum.
+
+## Opposite-sign Mode
+
+The `opposite_sign` mode searches only for conditions where the two cells show opposite DEP responses.
+
+A frequency point is considered valid only when one of the following conditions is satisfied:
+
+    Re[K]_1 > 0 and Re[K]_2 < 0
+
+or
+
+    Re[K]_1 < 0 and Re[K]_2 > 0
+
+For valid frequency points, the application calculates:
+
+    score(f, sigma_s) = |Re[K]_1(f, sigma_s) - Re[K]_2(f, sigma_s)|
+
+Then it selects the valid point with the largest score.
+
+This mode is especially important for DEP separation because it directly searches for a condition where one cell is attracted toward stronger electric fields while the other cell is repelled from stronger electric fields.
+
+If no opposite-sign condition is found within the search range, the application raises an error and the GUI shows an error dialog.
+
+## Boundary Warning
+
+If the optimal `sigma_s` is found at the lower or upper boundary of the search range, the GUI displays a warning.
+
+This means the current search range may be too narrow. For example, if the optimum is found at `sigma_s_min`, a better condition may exist below the current lower bound.
+
+In that case, users should consider expanding the search range, such as:
+
+    sigma_s_min: 1.0e-5
+    sigma_s_max: 1.0
+    num_sigma_points: 50
+
+## GUI Usage
+
+In the parameter window, users can select:
+
+- Cell template 1
+- Cell template 2
+- Minimum `sigma_s`
+- Maximum `sigma_s`
+- Number of `sigma_s` search points
+- Optimization mode:
+  - Difference-only / 差分最大
+  - Opposite-sign / 符号分離
+
+After pressing the optimization button, the application opens a graph window and displays:
+
+- the two `Re[K]` curves at the optimized `sigma_s`
+- the optimized frequency marker
+- the optimization mode
+- the values of `Re[K]_1` and `Re[K]_2` at the optimum
+
+---
+
+## 日本語
+
+本アプリケーションでは、2つの細胞テンプレートを用いて、細胞間のDEP応答差が大きくなる溶液導電率 `sigma_s` を数値探索できます。
+
+この機能は、DEPを用いた細胞分離・捕捉条件の設計を支援するためのものです。候補となる `sigma_s` を対数スケールで生成し、それぞれの `sigma_s` に対して、周波数範囲内の `Re[K]` 曲線を2細胞分計算します。その後、選択された最適化モードに従って、最も分離性能が高い条件を探索します。
+
+## 目的
+
+誘電泳動では、Clausius-Mossotti因子の実部 `Re[K]` の符号と大きさによって、細胞が受けるDEP力の向きと強さが変わります。
+
+- `Re[K] > 0`: 正のDEP。細胞は電場の強い領域へ引き寄せられる
+- `Re[K] < 0`: 負のDEP。細胞は電場の強い領域から遠ざかる
+
+そのため、実際のDEP分離では、単に2曲線の差が大きいだけでは不十分な場合があります。特に、一方の細胞が正のDEP、もう一方の細胞が負のDEPを示す条件は、選択的な捕捉や分離において重要です。
+
+## 入力パラメータ
+
+最適化では以下の入力を使用します。
+
+| 入力 | 意味 |
+|---|---|
+| 細胞テンプレート1 | 1つ目の細胞パラメータテンプレート |
+| 細胞テンプレート2 | 2つ目の細胞パラメータテンプレート |
+| `eps_s_relative` | 溶液の比誘電率 |
+| `sigma_s_min` | 溶液導電率の探索下限 |
+| `sigma_s_max` | 溶液導電率の探索上限 |
+| `num_sigma_points` | `sigma_s` の探索点数 |
+| `f_min` | 周波数範囲の下限 |
+| `f_max` | 周波数範囲の上限 |
+| `num_frequency_points` | 周波数の計算点数 |
+| 最適化モード | `difference_only` または `opposite_sign` |
+
+細胞固有のパラメータは、選択された細胞テンプレートから取得します。
+
+    membrane_capacitance
+    radius_m
+    eps_c_relative
+    sigma_c
+
+溶液条件とシミュレーション条件は、GUIの入力欄から取得します。
+
+## 数値探索の設計
+
+探索は、`sigma_s` を対数スケールで離散化したグリッドサーチとして実装しています。
+
+全体の流れは以下です。
+
+1. 候補となる溶液導電率を生成する。
+
+        sigma_s_candidates = logspace(log10(sigma_s_min), log10(sigma_s_max), num_sigma_points)
+
+2. 周波数点を生成する。
+
+        frequency_hz = logspace(log10(f_min), log10(f_max), num_frequency_points)
+
+3. 各 `sigma_s` 候補に対して、2つの細胞の `Re[K]` 曲線を計算する。
+
+        Re[K]_1(f, sigma_s)
+        Re[K]_2(f, sigma_s)
+
+4. 選択された最適化モードに従ってスコアを計算する。
+
+5. 最も良いスコアを与える `sigma_s` と周波数 `f_opt` を選択する。
+
+主な実装ファイルは以下です。
+
+    src/dep_cm_sim/condition_optimizer.py
+    src/dep_cm_sim/gui/parameter_window.py
+    src/dep_cm_sim/gui/graph_window.py
+
+## 差分最大モード
+
+`difference_only` モードでは、2つの `Re[K]` 曲線の差が最大になる条件を探索します。
+
+各 `sigma_s` 候補に対して、以下のスコアを計算します。
+
+    score(f, sigma_s) = |Re[K]_1(f, sigma_s) - Re[K]_2(f, sigma_s)|
+
+そのうえで、周波数方向に最大となる点を求めます。
+
+    f_opt = argmax_f |Re[K]_1(f, sigma_s) - Re[K]_2(f, sigma_s)|
+
+最後に、すべての `sigma_s` 候補の中で最もスコアが大きいものを選択します。
+
+    sigma_s_opt = argmax_sigma_s max_f |Re[K]_1(f, sigma_s) - Re[K]_2(f, sigma_s)|
+
+このモードは、2つのCM因子曲線の数値的な差が最大となる条件を調べる場合に有用です。
+
+ただし、このモードでは2つのDEP応答が逆符号であることは要求しません。そのため、最適条件において、両方の細胞が正のDEP、または両方の細胞が負のDEPを示す場合があります。
+
+## 符号分離モード
+
+`opposite_sign` モードでは、2つの細胞が反対向きのDEP応答を示す条件のみを探索対象にします。
+
+有効な周波数点は、以下のいずれかを満たす点です。
+
+    Re[K]_1 > 0 and Re[K]_2 < 0
+
+または
+
+    Re[K]_1 < 0 and Re[K]_2 > 0
+
+この条件を満たす点に対してのみ、以下のスコアを計算します。
+
+    score(f, sigma_s) = |Re[K]_1(f, sigma_s) - Re[K]_2(f, sigma_s)|
+
+その中で、スコアが最大となる条件を選択します。
+
+このモードは、DEP分離において特に重要です。なぜなら、一方の細胞を電場の強い領域へ引き寄せ、もう一方の細胞を電場の強い領域から遠ざける条件を直接探索できるためです。
+
+探索範囲内に符号分離条件が存在しない場合は、エラーを出し、GUI上でもエラーダイアログを表示します。
+
+## 探索範囲端の警告
+
+最適な `sigma_s` が探索範囲の下限または上限にある場合、GUI上に警告を表示します。
+
+これは、現在の探索範囲が狭く、より良い条件が探索範囲の外に存在する可能性を示します。
+
+例えば、最適値が `sigma_s_min` に張り付いている場合は、以下のように探索範囲を広げて再計算することが有効です。
+
+    sigma_s_min: 1.0e-5
+    sigma_s_max: 1.0
+    num_sigma_points: 50
+
+## GUIでの使い方
+
+パラメータウィンドウでは、以下を選択・入力できます。
+
+- 細胞テンプレート1
+- 細胞テンプレート2
+- `sigma_s` 最小値
+- `sigma_s` 最大値
+- `sigma_s` 探索点数
+- 最適化モード
+  - 差分最大
+  - 符号分離
+
+最適化ボタンを押すと、GraphWindowが開き、以下が表示されます。
+
+- 最適化された `sigma_s` における2つの `Re[K]` 曲線
+- 最適周波数マーカー
+- 最適化モード
+- 最適点における `Re[K]_1` と `Re[K]_2`
+
+
 # Optimal Frequency Display / 最適周波数表示
 
 ## English
