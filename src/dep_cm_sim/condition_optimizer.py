@@ -163,8 +163,17 @@ def find_optimal_opposite_sign_frequency(
         return None
 
     differences = np.abs(values_1 - values_2)
-    masked_differences = np.where(opposite_sign_mask, differences, -np.inf)
-    index = int(np.argmax(masked_differences))
+
+    # In opposite-sign mode, the optimum is selected by a balanced
+    # zero-reference separation score:
+    #
+    #     score = min(|Re[K]1|, |Re[K]2|)
+    #
+    # This avoids selecting a point where one Re[K] value is large
+    # but the other is almost zero.
+    balanced_scores = np.minimum(np.abs(values_1), np.abs(values_2))
+    masked_scores = np.where(opposite_sign_mask, balanced_scores, -np.inf)
+    index = int(np.argmax(masked_scores))
 
     return FrequencyOptimizationResult(
         frequency_hz=float(frequencies[index]),
