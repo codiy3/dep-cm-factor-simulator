@@ -168,16 +168,18 @@ def test_find_optimal_opposite_sign_frequency_returns_none_without_opposite_sign
     assert result is None
 
 
-def test_find_optimal_opposite_sign_frequency_returns_best_opposite_sign_point() -> None:
+def test_find_optimal_opposite_sign_frequency_returns_most_balanced_opposite_sign_point() -> None:
     frequencies = np.array([1.0, 10.0, 100.0])
-    values_1 = np.array([0.1, 0.8, -0.2])
-    values_2 = np.array([0.4, -0.5, 0.9])
+    values_1 = np.array([0.489, 0.25, -0.2])
+    values_2 = np.array([-0.006, -0.20, 0.9])
 
     result = find_optimal_opposite_sign_frequency(frequencies, values_1, values_2)
 
     assert result is not None
     assert result.frequency_hz == 10.0
-    assert result.difference == pytest.approx(1.3)
+    assert result.value_1 == pytest.approx(0.25)
+    assert result.value_2 == pytest.approx(-0.20)
+    assert result.difference == pytest.approx(0.45)
 
 
 def test_get_boundary_optimum_status_detects_lower_boundary() -> None:

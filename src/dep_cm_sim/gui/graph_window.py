@@ -7,10 +7,12 @@ from pathlib import Path
 
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from dep_cm_sim.condition_optimizer import find_optimal_opposite_sign_frequency
 from dep_cm_sim.optimization import find_optimal_frequency
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QHBoxLayout,
     QMainWindow,
@@ -51,6 +53,11 @@ class GraphWindow(QMainWindow):
         save_button = QPushButton("PNG保存")
         save_button.clicked.connect(self.save_png)
         button_layout.addWidget(save_button)
+
+        self.optimal_frequency_mode_combo = QComboBox()
+        self.optimal_frequency_mode_combo.addItem("差分最大", "difference_only")
+        self.optimal_frequency_mode_combo.addItem("符号分離", "opposite_sign")
+        button_layout.addWidget(self.optimal_frequency_mode_combo)
 
         optimal_frequency_button = QPushButton("最適周波数を表示")
         optimal_frequency_button.clicked.connect(self.show_optimal_frequency)
@@ -206,11 +213,32 @@ class GraphWindow(QMainWindow):
         curve_1 = self.curve_data_list[0]
         curve_2 = self.curve_data_list[1]
 
-        result = find_optimal_frequency(
-            curve_1.frequencies,
-            curve_1.values,
-            curve_2.values,
-        )
+        optimization_mode = self.optimal_frequency_mode_combo.currentData()
+
+        if optimization_mode == "opposite_sign":
+            result = find_optimal_opposite_sign_frequency(
+                curve_1.frequencies,
+                curve_1.values,
+                curve_2.values,
+            )
+
+            if result is None:
+                QMessageBox.warning(
+                    self,
+                    "最適周波数表示エラー",
+                    (
+                        "符号分離条件を満たす周波数点が見つかりませんでした。\n\n"
+                        "Re[K]1 と Re[K]2 が正負に分かれる周波数範囲が、"
+                        "現在のグラフ内に存在しない可能性があります。"
+                    ),
+                )
+                return
+        else:
+            result = find_optimal_frequency(
+                curve_1.frequencies,
+                curve_1.values,
+                curve_2.values,
+            )
 
         for handle in self.optimal_marker_handles:
             try:
@@ -228,7 +256,10 @@ class GraphWindow(QMainWindow):
         annotation = self.ax.annotate(
             (
                 f"f_opt = {result.frequency_hz:.2e} Hz\n"
-                f"|ΔRe[K]| = {result.difference:.3f}"
+                f"|ΔRe[K]| = {result.difference:.3f}\n"
+                f"Re[K]1 = {result.value_1:.3f}\n"
+                f"Re[K]2 = {result.value_2:.3f}\n"
+                f"mode = {optimization_mode}"
             ),
             xy=(result.frequency_hz, max(result.value_1, result.value_2)),
             xytext=(0.05, 0.05),
