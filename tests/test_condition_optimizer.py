@@ -215,3 +215,42 @@ def test_validate_solution_conductivity_optimization_inputs_rejects_invalid_mode
             num_frequency_points=50,
             optimization_mode="invalid",  # type: ignore[arg-type]
         )
+
+
+def test_solution_conductivity_opposite_sign_scores_use_balanced_zero_reference() -> None:
+    cell_1 = make_cell_template(
+        "cell_1",
+        membrane_capacitance=0.015,
+        sigma_c=0.5,
+    )
+    cell_2 = make_cell_template(
+        "cell_2",
+        membrane_capacitance=0.010,
+        sigma_c=0.2,
+    )
+
+    result = find_optimal_solution_conductivity(
+        cell_1=cell_1,
+        cell_2=cell_2,
+        eps_s_relative=80.0,
+        sigma_s_min=1.0e-4,
+        sigma_s_max=1.0,
+        num_sigma_points=8,
+        f_min=1.0,
+        f_max=1.0e8,
+        num_frequency_points=100,
+        optimization_mode="opposite_sign",
+    )
+
+    assert result.optimization_mode == "opposite_sign"
+    assert result.value_1_at_optimum * result.value_2_at_optimum < 0.0
+
+    expected_score = min(
+        abs(result.value_1_at_optimum),
+        abs(result.value_2_at_optimum),
+    )
+
+    assert np.nanmax(result.scores) == pytest.approx(expected_score)
+    assert result.max_difference == pytest.approx(
+        abs(result.value_1_at_optimum - result.value_2_at_optimum)
+    )

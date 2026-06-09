@@ -76,6 +76,7 @@ def find_optimal_solution_conductivity(
     best_value_1 = 0.0
     best_value_2 = 0.0
     best_difference = -1.0
+    best_score = -1.0
 
     for index, sigma_s in enumerate(sigma_s_candidates):
         values_1 = calculate_cm_factor_real(
@@ -113,14 +114,23 @@ def find_optimal_solution_conductivity(
         if optimal_frequency_result is None:
             continue
 
-        scores[index] = optimal_frequency_result.difference
+        if optimization_mode == "opposite_sign":
+            optimization_score = min(
+                abs(optimal_frequency_result.value_1),
+                abs(optimal_frequency_result.value_2),
+            )
+        else:
+            optimization_score = optimal_frequency_result.difference
 
-        if optimal_frequency_result.difference > best_difference:
+        scores[index] = optimization_score
+
+        if optimization_score > best_score:
             best_result_index = index
             best_frequency_hz = optimal_frequency_result.frequency_hz
             best_value_1 = optimal_frequency_result.value_1
             best_value_2 = optimal_frequency_result.value_2
             best_difference = optimal_frequency_result.difference
+            best_score = optimization_score
 
     if best_result_index is None:
         raise ValueError("No opposite-sign DEP condition was found in the search range.")
