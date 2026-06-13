@@ -569,6 +569,309 @@ After pressing the optimization button, the application opens a graph window and
 - 最適点における `Re[K]_1` と `Re[K]_2`
 
 
+
+---
+
+# Experimental Data Comparison and Validation / 実験データ比較と検証可能性
+
+## English
+
+This simulator provides functions for comparing simulated Clausius-Mossotti factor curves with experimental data.
+
+This part consists of:
+
+- Phase 6: experimental data overlay
+- Phase 7: quantitative error evaluation
+- reliability, reproducibility, and validation documentation
+
+Phase 6 allows experimental data to be displayed on the same graph as simulated `Re[K]` curves.  
+Phase 7 allows experimental data and simulation results to be compared quantitatively using error metrics.
+
+---
+
+## Phase 6: Experimental Data Overlay
+
+Experimental data can be loaded from CSV or entered manually through the GUI.
+
+The standard experimental data CSV format is:
+
+    frequency_hz,value,label,plot_style
+
+The columns are:
+
+| Column | Meaning |
+|---|---|
+| `frequency_hz` | Experimental frequency in Hz |
+| `value` | Experimental value to compare with simulated `Re[K]` |
+| `label` | Label used in the graph legend |
+| `plot_style` | Display style for experimental data |
+
+The supported `plot_style` values are:
+
+| `plot_style` | Meaning |
+|---|---|
+| `scatter` | Points only |
+| `line` | Line only |
+| `scatter_line` | Points and line |
+
+Main implementation files:
+
+    src/dep_cm_sim/experimental_data.py
+    src/dep_cm_sim/gui/experimental_data_window.py
+    src/dep_cm_sim/gui/graph_window.py
+    src/dep_cm_sim/gui/parameter_window.py
+    tests/test_experimental_data.py
+
+This makes it possible to save, reload, and visually compare experimental data with simulation curves.
+
+---
+
+## Phase 7: Quantitative Error Evaluation
+
+The error evaluation function compares experimental data with the current simulation result.
+
+The calculation flow is:
+
+1. Read current simulation parameters from the parameter window.
+2. Generate the simulation frequency array using `f_min`, `f_max`, and `num_points`.
+3. Calculate the simulated `Re[K]` curve.
+4. Load experimental data from CSV.
+5. Interpolate simulated values at the experimental frequency points.
+6. Calculate pointwise errors and summary metrics.
+7. Save the error evaluation result as CSV.
+
+The pointwise error is defined as:
+
+    error = experimental_value - simulated_value
+
+The absolute error is defined as:
+
+    absolute_error = |experimental_value - simulated_value|
+
+The summary metrics are:
+
+| Metric | Meaning |
+|---|---|
+| MAE | Mean absolute error |
+| RMSE | Root mean squared error |
+| Maximum absolute error | Largest absolute error among evaluated points |
+| Number of evaluated points | Number of experimental data points used for comparison |
+
+The error evaluation CSV contains:
+
+    frequency_hz,experimental_value,simulated_value,error,absolute_error
+
+It also contains summary metrics:
+
+    metric,value
+    mae,...
+    rmse,...
+    max_absolute_error,...
+    num_points,...
+
+Main implementation files:
+
+    src/dep_cm_sim/error_evaluation.py
+    src/dep_cm_sim/gui/parameter_window.py
+    tests/test_error_evaluation.py
+
+---
+
+# Reliability, Reproducibility, and Validation / 信頼性・再現性・検証可能性
+
+## A. Software Implementation Reliability
+
+Software implementation reliability is supported by:
+
+- automated tests with `pytest`
+- static code checking with `ruff`
+- GitHub Actions CI
+- Git commit history
+- reproducible execution commands
+- CSV-based input/output formats
+
+The tests can be executed with:
+
+    uv run pytest
+
+At the time of this implementation, the test result is:
+
+    71 passed
+
+The lint check can be executed with:
+
+    uv run ruff check .
+
+At the time of this implementation, the lint result is:
+
+    All checks passed
+
+The application can be launched with:
+
+    uv run dep-cm-sim
+
+These checks support software-level reliability, but they do not prove scientific validity by themselves.
+
+---
+
+## B. Scientific Model Validity
+
+Scientific model validity should be evaluated separately from software correctness.
+
+This simulator supports scientific validation through:
+
+- equation-level implementation of `Re[K]` in `src/dep_cm_sim/equations.py`
+- reproduction of reference paper figures using the `論文図(a)〜(h)を再現` function
+- parameter CSV export/import for traceability
+- experimental data overlay
+- quantitative error evaluation against experimental data
+
+The CM factor calculation is separated from GUI code so that the numerical model can be inspected independently.
+
+The reference figure reproduction function is useful for checking whether the implementation can reproduce known trends under corresponding parameter conditions.
+
+Experimental data comparison provides both visual and quantitative checks using:
+
+- pointwise error
+- absolute error
+- MAE
+- RMSE
+- maximum absolute error
+
+However, scientific validity for a specific experiment still depends on:
+
+- whether the input parameters match the experimental condition
+- whether the model assumptions match the experimental setup
+- whether the simulation agrees with measured data
+- whether the experimental data quality is sufficient
+
+Therefore, when this simulator is used for research or publication, the parameter set, experimental data, and error evaluation results should be reported together.
+
+---
+
+## 日本語
+
+本シミュレータでは、シミュレーションされた Clausius-Mossotti 因子の実部 `Re[K]` と実験データを比較するために、以下の機能を実装している。
+
+- Phase 6: 実験データ重ね描き
+- Phase 7: 実験データとシミュレーションの誤差評価
+- 信頼性・再現性・検証可能性の記録
+
+---
+
+## Phase 6: 実験データ重ね描き
+
+実験データはCSVから読み込むか、GUI上で手入力できる。
+
+標準CSV形式は以下である。
+
+    frequency_hz,value,label,plot_style
+
+各列の意味は以下である。
+
+| 列 | 意味 |
+|---|---|
+| `frequency_hz` | 実験周波数 [Hz] |
+| `value` | シミュレーションの `Re[K]` と比較する実験値 |
+| `label` | グラフ凡例に表示するラベル |
+| `plot_style` | 実験データの表示形式 |
+
+`plot_style` には以下を指定できる。
+
+| `plot_style` | 意味 |
+|---|---|
+| `scatter` | 点のみ |
+| `line` | 線のみ |
+| `scatter_line` | 点＋線 |
+
+この機能により、実験データを保存・再読込し、シミュレーション曲線と視覚的に比較できる。
+
+---
+
+## Phase 7: 誤差評価
+
+Phase 7では、実験データと現在のシミュレーション条件を定量的に比較する。
+
+計算フローは以下である。
+
+1. パラメータ入力ウィンドウから現在のシミュレーション条件を読み取る。
+2. `f_min`, `f_max`, `num_points` から周波数配列を生成する。
+3. 現在のパラメータで `Re[K]` 曲線を計算する。
+4. 実験データCSVを読み込む。
+5. 実験周波数点に対応するシミュレーション値を補間する。
+6. 各点の誤差と絶対誤差を計算する。
+7. MAE、RMSE、最大絶対誤差を計算する。
+8. 誤差評価結果をCSVとして保存する。
+
+誤差は以下で定義する。
+
+    error = experimental_value - simulated_value
+
+絶対誤差は以下で定義する。
+
+    absolute_error = |experimental_value - simulated_value|
+
+評価指標は以下である。
+
+| 指標 | 意味 |
+|---|---|
+| MAE | 平均絶対誤差 |
+| RMSE | 二乗平均平方根誤差 |
+| 最大絶対誤差 | 評価点の中で最も大きい絶対誤差 |
+| 評価点数 | 比較に使用した実験データ点数 |
+
+---
+
+## A. ソフトウェア実装としての信頼性
+
+ソフトウェア実装としての信頼性は、以下によって確認できる。
+
+- `pytest` による自動テスト
+- `ruff` による静的解析
+- GitHub ActionsによるCI
+- Git履歴
+- 再現可能な実行手順
+- CSVによる入出力
+
+テストは以下で実行できる。
+
+    uv run pytest
+
+現時点での結果は以下である。
+
+    71 passed
+
+静的解析は以下で実行できる。
+
+    uv run ruff check .
+
+現時点での結果は以下である。
+
+    All checks passed
+
+アプリケーションは以下で起動できる。
+
+    uv run dep-cm-sim
+
+---
+
+## B. 科学モデルとしての妥当性
+
+科学モデルとしての妥当性は、ソフトウェアテストだけでは証明できない。
+
+本シミュレータでは、以下によって科学モデルの妥当性を確認できるようにしている。
+
+- `src/dep_cm_sim/equations.py` における `Re[K]` の式実装
+- `論文図(a)〜(h)を再現` 機能による既存論文図の再現
+- パラメータCSVによる条件記録
+- 実験データとの重ね描き
+- 実験データとの定量的誤差評価
+
+ただし、特定の実験条件における科学的妥当性は、実際の実験データとの比較によって確認する必要がある。
+
+研究や論文で使用する場合は、使用したパラメータ、実験データ、誤差評価結果を併せて示すことが望ましい。
+
+
 # Optimal Frequency Display / 最適周波数表示
 
 ## English

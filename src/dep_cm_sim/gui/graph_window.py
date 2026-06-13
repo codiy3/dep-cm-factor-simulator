@@ -111,6 +111,42 @@ class GraphWindow(QMainWindow):
         self.figure.tight_layout()
         self.canvas.draw()
 
+    def add_experimental_data(
+        self,
+        frequency_hz: NDArray[np.float64],
+        values: NDArray[np.float64],
+        label: str,
+        plot_style: str = "scatter",
+    ) -> None:
+        if frequency_hz.size == 0:
+            raise ValueError("frequency_hz must not be empty.")
+        if values.size == 0:
+            raise ValueError("values must not be empty.")
+        if frequency_hz.shape != values.shape:
+            raise ValueError("frequency_hz and values must have the same shape.")
+        if np.isnan(frequency_hz).any():
+            raise ValueError("frequency_hz must not contain NaN.")
+        if np.any(frequency_hz <= 0):
+            raise ValueError("frequency_hz must be positive.")
+        if np.isnan(values).any():
+            raise ValueError("values must not contain NaN.")
+        if not label.strip():
+            raise ValueError("label must not be empty.")
+        if plot_style not in {"scatter", "line", "scatter_line"}:
+            raise ValueError("plot_style must be scatter, line, or scatter_line.")
+
+        legend_label = f"experimental: {label}"
+
+        if plot_style == "scatter":
+            self.ax.scatter(frequency_hz, values, label=legend_label)
+        elif plot_style == "line":
+            self.ax.plot(frequency_hz, values, label=legend_label)
+        else:
+            self.ax.plot(frequency_hz, values, marker="o", label=legend_label)
+        self.ax.legend()
+        self.figure.tight_layout()
+        self.canvas.draw()
+
     def save_png(self) -> None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         default_path = Path("outputs") / f"cm_factor_{timestamp}.png"
