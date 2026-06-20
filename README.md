@@ -1,5 +1,3 @@
-![DEP CM Factor Simulator GUI](docs/images/gui_screenshot.png)
-
 # DEP CM Factor Simulator
 
 Python GUI simulator for visualizing, comparing, validating, and optimizing the frequency-dependent Clausius-Mossotti factor in dielectrophoresis (DEP).
