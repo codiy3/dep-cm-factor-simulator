@@ -1,16 +1,192 @@
+![DEP CM Factor Simulator GUI](docs/images/gui_screenshot.png)
+
 # DEP CM Factor Simulator
+
+Python GUI simulator for visualizing, comparing, validating, and optimizing the frequency-dependent Clausius-Mossotti factor in dielectrophoresis (DEP).
+
+誘電泳動（DEP: Dielectrophoresis）における Clausius-Mossotti 因子の周波数依存性を、GUI上で可視化・比較・検証・条件探索できる Python アプリケーションです。
+
+![DEP CM Factor Simulator GUI](docs/images/gui_screenshot.png)
+
+---
+
+# Portfolio Summary / ポートフォリオ概要
+
+## English
+
+DEP CM Factor Simulator is a Python GUI application developed to support the understanding, comparison, validation, and optimization of dielectrophoretic behavior in biomedical microsystem research.
+
+The application calculates and visualizes the frequency dependence of the real part of the Clausius-Mossotti factor, `Re[K]`, which is an important indicator for understanding whether cells or particles exhibit positive or negative dielectrophoresis. Users can change physical and electrical parameters, compare multiple simulation conditions, save and load parameter conditions, reproduce a reference DEP spectrum from the literature, compare simulation curves with experimental data, evaluate errors quantitatively, and numerically search for solution conductivity conditions that improve separation performance between two cell templates.
+
+This project demonstrates implementation of a physics-based numerical model, GUI design, data visualization, parameter management, experimental data comparison, quantitative error evaluation, optimization logic, testing, and reproducible Python environment management.
+
+## 日本語
+
+DEP CM Factor Simulator は、生物医療マイクロシステム研究における誘電泳動（DEP）の理解、条件比較、検証、最適化を支援するために開発した Python GUI アプリケーションです。
+
+本アプリケーションでは、細胞や粒子が正のDEPまたは負のDEPを示すかを判断するうえで重要な Clausius-Mossotti 因子の実部 `Re[K]` について、周波数依存性を計算・可視化できます。ユーザーは物理・電気的パラメータを変更しながら、複数条件の比較、パラメータ条件の保存・読み込み、参考文献に掲載されたDEPスペクトルの再現、実験データとの重ね描き、定量的な誤差評価、さらに2つの細胞テンプレート間で分離性能が高くなる溶液導電率の数値探索を行うことができます。
+
+本プロジェクトでは、物理モデルに基づく数値計算、GUI設計、データ可視化、パラメータ管理、実験データ比較、定量的誤差評価、最適化ロジック、テスト、再現性を意識したPython環境管理を実装しています。
+
+---
+
+# Motivation / 開発背景
+
+## English
+
+In DEP-based cell manipulation, the sign and magnitude of `Re[K]` are important because they determine whether cells are attracted toward or repelled from stronger electric field regions.
+
+However, it can be difficult to intuitively understand how changes in solution conductivity, cytoplasm conductivity, permittivity, cell radius, and frequency affect the DEP response from equations alone. In addition, for research or engineering use, it is important not only to visualize simulation curves but also to compare them with experimental data and evaluate the difference quantitatively.
+
+Therefore, I developed this simulator to make the relationship between parameters and DEP behavior easier to understand through interactive GUI operation, graph visualization, literature-based reproduction, experimental data overlay, quantitative error evaluation, and optimization-based condition search.
+
+## 日本語
+
+DEPを用いた細胞操作では、Clausius-Mossotti因子の実部 `Re[K]` の符号と大きさが、細胞が電場の強い領域へ引き寄せられるか、または遠ざかるかに関わります。
+
+しかし、溶液導電率、細胞質導電率、誘電率、細胞半径、周波数などのパラメータ変化がDEP応答に与える影響を、数式だけから直感的に理解することは容易ではありません。また、研究・工学用途で利用するためには、単にシミュレーション曲線を描画するだけでなく、実験データとの比較や誤差評価によって、モデルと実測値の差を確認できることも重要です。
+
+そこで、GUI上で条件を変更しながら `Re[K]` の周波数依存性を可視化し、参考文献図の再現、実験データとの重ね描き、定量的な誤差評価、最適化による条件探索まで行えるシミュレータを開発しました。
+
+---
+
+# Technical Highlights / 技術的な工夫
+
+## English
+
+- Implemented the frequency-dependent Clausius-Mossotti factor model in Python
+- Built a GUI for interactive parameter input and graph visualization
+- Added overlay plotting to compare multiple simulation conditions
+- Implemented CSV save/load for reproducible parameter management
+- Added cell parameter templates to separate cell-specific properties from experimental and plotting conditions
+- Reproduced the reference DEP spectrum shown in Figure 1(a)–(h) of the literature
+- Implemented solution conductivity optimization for DEP-based cell separation
+- Added two optimization modes:
+  - `difference_only`: maximizes the numerical difference between two `Re[K]` curves
+  - `opposite_sign`: searches for conditions where two cells show opposite DEP responses
+- Implemented experimental data overlay from CSV or manual GUI input
+- Added quantitative error evaluation between experimental data and simulation results
+- Added error metrics such as MAE, RMSE, and maximum absolute error
+- Separated numerical model logic from GUI code to improve inspectability and maintainability
+- Added tests with `pytest` and linting with `ruff`
+- Managed dependencies and execution environment using `uv`
+- Documented software reliability, reproducibility, and scientific validation considerations
+
+## 日本語
+
+- 周波数依存のClausius-Mossotti因子モデルをPythonで実装
+- GUIによるパラメータ入力とグラフ可視化を実装
+- 複数条件を同一グラフ上で比較できる重ね描き機能を追加
+- CSV保存・読み込みにより、条件の再利用性を向上
+- 細胞固有パラメータと実験条件・描画条件を分離するため、細胞テンプレート機能を実装
+- 参考文献 Figure 1(a)〜(h) に対応するDEPスペクトルの再現機能を実装
+- DEP分離条件の設計を支援するため、溶液導電率の数値探索機能を実装
+- 2種類の最適化モードを実装
+  - `difference_only`: 2つの `Re[K]` 曲線の数値差を最大化
+  - `opposite_sign`: 2細胞が逆符号のDEP応答を示す条件を探索
+- CSVまたはGUI手入力による実験データ重ね描き機能を実装
+- 実験データとシミュレーション結果の定量的な誤差評価機能を実装
+- MAE、RMSE、最大絶対誤差などの評価指標を追加
+- 数値モデル部分とGUI部分を分離し、実装内容を確認しやすい構成にした
+- `pytest` によるテストと `ruff` によるlintを導入
+- `uv` により依存関係と実行環境を管理
+- ソフトウェアとしての信頼性、再現性、科学的検証可能性をREADME上に記録
+
+---
+
+# Screenshots / スクリーンショット
+
+## Main GUI Window / メインGUI画面
+
+![Main GUI window](docs/images/gui_screenshot.png)
+
+Image path:
+
+    docs/images/gui_screenshot.png
+
+This window allows users to input simulation parameters, manage cell templates, run solution conductivity optimization, save/load CSV files, load experimental data, evaluate simulation error, and reproduce the reference figure.
+
+この画面では、シミュレーションパラメータの入力、細胞テンプレート管理、溶液導電率の最適化、CSV保存・読み込み、実験データの読み込み、誤差評価、参考文献図の再現を実行できます。
+
+## Reference Figure Reproduction / 参考文献図の再現
+
+![Reference figure reproduction](docs/images/reference_reproduction.png)
+
+Image path:
+
+    docs/images/reference_reproduction.png
+
+The simulator reproduces the frequency dependence of `Re[K]` under eight solution conductivity conditions corresponding to Figure 1(a)–(h) in the reference article.
+
+参考文献 Figure 1(a)〜(h) に対応する8種類の溶液導電率条件について、`Re[K]` の周波数依存性を再現できます。
+
+## Opposite-sign Optimization / 符号分離モードによる最適化
+
+![Opposite-sign optimization](docs/images/opposite_sign_optimization.png)
+
+Image path:
+
+    docs/images/opposite_sign_optimization.png
+
+The `opposite_sign` mode searches for a condition where two cell templates show opposite DEP responses. This is useful for selective trapping or separation because one cell can exhibit positive DEP while the other exhibits negative DEP.
+
+`opposite_sign` モードでは、2つの細胞テンプレートが逆符号のDEP応答を示す条件を探索します。一方の細胞が正のDEP、もう一方が負のDEPを示すため、選択的な捕捉や分離条件の検討に有用です。
+
+## Difference-only Optimization / 差分最大モードによる最適化
+
+![Difference-only optimization](docs/images/difference_only_optimization.png)
+
+Image path:
+
+    docs/images/difference_only_optimization.png
+
+The `difference_only` mode searches for the frequency and solution conductivity where the numerical difference between two `Re[K]` curves is maximized.
+
+`difference_only` モードでは、2つの `Re[K]` 曲線の数値的な差が最大となる周波数と溶液導電率を探索します。
+
+---
+
+# Overview / 概要
 
 ## English
 
 DEP CM Factor Simulator is a Python GUI application for visualizing the frequency dependence of the real part of the Clausius-Mossotti factor, `Re[K]`, in dielectrophoresis (DEP).
 
-The application is designed for educational, simulation, and parameter-comparison purposes. Users can change physical and electrical parameters, compare multiple conditions, save graphs, and reproduce a reference DEP spectrum from the literature.
+The application is designed for educational, simulation, parameter-comparison, experimental-data comparison, and condition-optimization purposes. Users can change physical and electrical parameters, compare multiple conditions, save graphs, reproduce a reference DEP spectrum from the literature, overlay experimental data, evaluate simulation error, and search for separation-related solution conductivity conditions.
 
 ## 日本語
 
 DEP CM Factor Simulator は、誘電泳動（DEP: Dielectrophoresis）における Clausius-Mossotti 因子の実部 `Re[K]` と周波数の関係を可視化するための Python GUI アプリケーションです。
 
-教育用途、シミュレーション、パラメータ比較を目的としており、物理・電気的パラメータを変更しながら複数条件の比較、グラフ保存、参考文献に掲載されたDEPスペクトルの再現を行うことができます。
+教育用途、シミュレーション、パラメータ比較、実験データ比較、条件最適化を目的としており、物理・電気的パラメータを変更しながら複数条件の比較、グラフ保存、参考文献に掲載されたDEPスペクトルの再現、実験データの重ね描き、誤差評価、分離条件に関わる溶液導電率探索を行うことができます。
+
+---
+
+# Table of Contents / 目次
+
+- [Portfolio Summary / ポートフォリオ概要](#portfolio-summary--ポートフォリオ概要)
+- [Motivation / 開発背景](#motivation--開発背景)
+- [Technical Highlights / 技術的な工夫](#technical-highlights--技術的な工夫)
+- [Screenshots / スクリーンショット](#screenshots--スクリーンショット)
+- [Overview / 概要](#overview--概要)
+- [Features / 機能](#features--機能)
+- [Requirements / 必要環境](#requirements--必要環境)
+- [Setup / セットアップ](#setup--セットアップ)
+- [Run / 実行方法](#run--実行方法)
+- [Usage / 使い方](#usage--使い方)
+- [Parameters / パラメータ](#parameters--パラメータ)
+- [Cell Parameter Templates / 細胞パラメータテンプレート](#cell-parameter-templates--細胞パラメータテンプレート)
+- [CSV Save and Load / CSV保存・読み込み](#csv-save-and-load--csv保存読み込み)
+- [Solution Conductivity Optimization / 最適溶液導電率探索](#solution-conductivity-optimization--最適溶液導電率探索)
+- [Experimental Data Comparison and Validation / 実験データ比較と検証可能性](#experimental-data-comparison-and-validation--実験データ比較と検証可能性)
+- [Optimal Frequency Display / 最適周波数表示](#optimal-frequency-display--最適周波数表示)
+- [Model / 計算モデル](#model--計算モデル)
+- [Reproducing Reference Figure 1(a)–(h) / 参考文献 Figure 1(a)〜(h) の再現](#reproducing-reference-figure-1ah--参考文献-figure-1ah-の再現)
+- [Reference / 参考文献](#reference--参考文献)
+- [Development / 開発](#development--開発)
+- [Project Structure / プロジェクト構成](#project-structure--プロジェクト構成)
+- [Notes / 注意事項](#notes--注意事項)
+- [Image Placement Guide / 画像配置ガイド](#image-placement-guide--画像配置ガイド)
 
 ---
 
@@ -32,6 +208,15 @@ DEP CM Factor Simulator は、誘電泳動（DEP: Dielectrophoresis）におけ�
 - Run the reference Figure 1(a)–(h) reproduction directly from the GUI
 - Save and load parameter conditions as CSV files
 - Add custom graph labels for each simulation condition
+- Manage cell-specific parameter templates
+- Search for an optimal solution conductivity for DEP-based separation
+- Display the optimal frequency where two `Re[K]` curves differ the most
+- Overlay experimental data on simulation graphs
+- Load experimental data from CSV
+- Enter experimental data manually from the GUI
+- Evaluate errors between experimental data and simulation results
+- Export error evaluation results as CSV files
+- Document software reliability, reproducibility, and scientific validation considerations
 
 ## 日本語
 
@@ -49,6 +234,15 @@ DEP CM Factor Simulator は、誘電泳動（DEP: Dielectrophoresis）におけ�
 - GUIから参考文献 Figure 1(a)〜(h) の再現グラフを直接生成
 - パラメータ条件のCSV保存・読み込み
 - シミュレーション条件ごとの任意グラフラベル入力
+- 細胞固有パラメータテンプレートの管理
+- DEP分離に向けた最適溶液導電率の探索
+- 2つの `Re[K]` 曲線の差が最大となる最適周波数の表示
+- 実験データのシミュレーショングラフへの重ね描き
+- CSVからの実験データ読み込み
+- GUIからの実験データ手入力
+- 実験データとシミュレーション結果の誤差評価
+- 誤差評価結果のCSV出力
+- ソフトウェアの信頼性、再現性、科学的検証可能性の記録
 
 ---
 
@@ -117,6 +311,12 @@ GUIアプリケーションは以下で起動できます。
 11. Click `CSV保存` to save the current parameter condition as a CSV file.
 12. Click `CSV読み込み` to restore a saved parameter condition from a CSV file.
 13. Click `論文図(a)〜(h)を再現` to generate the reference Figure 1(a)–(h) reproduction graph directly from the GUI.
+14. Select two cell templates and run the solution conductivity optimization if separation-condition search is needed.
+15. Use the optimal-frequency display to visually identify where two curves differ the most.
+16. Load or manually enter experimental data if experimental comparison is needed.
+17. Overlay experimental data on the current simulation graph.
+18. Run error evaluation to compare experimental values and simulated values quantitatively.
+19. Save the error evaluation result as a CSV file.
 
 ## 日本語
 
@@ -133,6 +333,12 @@ GUIアプリケーションは以下で起動できます。
 11. 「CSV保存」で現在のパラメータ条件をCSVファイルとして保存できる
 12. 「CSV読み込み」で保存済みのCSVからパラメータ条件を復元できる
 13. 「論文図(a)〜(h)を再現」を押すと、参考文献 Figure 1(a)〜(h) に対応する8条件のグラフをGUIから直接生成できる
+14. 2つの細胞テンプレートを選択し、必要に応じて溶液導電率の最適化を実行できる
+15. 最適周波数表示を用いて、2曲線の差が最大となる周波数を視覚的に確認できる
+16. 実験データとの比較が必要な場合は、CSV読み込みまたはGUI手入力で実験データを入力できる
+17. 実験データを現在のシミュレーショングラフに重ね描きできる
+18. 誤差評価を実行し、実験値とシミュレーション値を定量的に比較できる
+19. 誤差評価結果をCSVファイルとして保存できる
 
 ---
 
@@ -210,7 +416,6 @@ These values are treated as experimental or plotting conditions rather than cell
     graph_label
 
 これらは細胞固有値ではなく、実験条件または描画条件として扱います。
-
 
 ---
 
@@ -568,6 +773,341 @@ After pressing the optimization button, the application opens a graph window and
 - 最適化モード
 - 最適点における `Re[K]_1` と `Re[K]_2`
 
+---
+
+# Experimental Data Comparison and Validation / 実験データ比較と検証可能性
+
+## English
+
+This simulator provides functions for comparing simulated Clausius-Mossotti factor curves with experimental data.
+
+This part consists of:
+
+- Phase 6: experimental data overlay
+- Phase 7: quantitative error evaluation
+- reliability, reproducibility, and validation documentation
+
+Phase 6 allows experimental data to be displayed on the same graph as simulated `Re[K]` curves.  
+Phase 7 allows experimental data and simulation results to be compared quantitatively using error metrics.
+
+---
+
+## Phase 6: Experimental Data Overlay
+
+Experimental data can be loaded from CSV or entered manually through the GUI.
+
+The standard experimental data CSV format is:
+
+    frequency_hz,value,label,plot_style
+
+The columns are:
+
+| Column | Meaning |
+|---|---|
+| `frequency_hz` | Experimental frequency in Hz |
+| `value` | Experimental value to compare with simulated `Re[K]` |
+| `label` | Label used in the graph legend |
+| `plot_style` | Display style for experimental data |
+
+The supported `plot_style` values are:
+
+| `plot_style` | Meaning |
+|---|---|
+| `scatter` | Points only |
+| `line` | Line only |
+| `scatter_line` | Points and line |
+
+Main implementation files:
+
+    src/dep_cm_sim/experimental_data.py
+    src/dep_cm_sim/gui/experimental_data_window.py
+    src/dep_cm_sim/gui/graph_window.py
+    src/dep_cm_sim/gui/parameter_window.py
+    tests/test_experimental_data.py
+
+This makes it possible to save, reload, and visually compare experimental data with simulation curves.
+
+---
+
+## Phase 7: Quantitative Error Evaluation
+
+The error evaluation function compares experimental data with the current simulation result.
+
+The calculation flow is:
+
+1. Read current simulation parameters from the parameter window.
+2. Generate the simulation frequency array using `f_min`, `f_max`, and `num_points`.
+3. Calculate the simulated `Re[K]` curve.
+4. Load experimental data from CSV.
+5. Interpolate simulated values at the experimental frequency points.
+6. Calculate pointwise errors and summary metrics.
+7. Save the error evaluation result as CSV.
+
+The pointwise error is defined as:
+
+    error = experimental_value - simulated_value
+
+The absolute error is defined as:
+
+    absolute_error = |experimental_value - simulated_value|
+
+The summary metrics are:
+
+| Metric | Meaning |
+|---|---|
+| MAE | Mean absolute error |
+| RMSE | Root mean squared error |
+| Maximum absolute error | Largest absolute error among evaluated points |
+| Number of evaluated points | Number of experimental data points used for comparison |
+
+The error evaluation CSV contains:
+
+    frequency_hz,experimental_value,simulated_value,error,absolute_error
+
+It also contains summary metrics:
+
+    metric,value
+    mae,...
+    rmse,...
+    max_absolute_error,...
+    num_points,...
+
+Main implementation files:
+
+    src/dep_cm_sim/error_evaluation.py
+    src/dep_cm_sim/gui/parameter_window.py
+    tests/test_error_evaluation.py
+
+---
+
+# Reliability, Reproducibility, and Validation / 信頼性・再現性・検証可能性
+
+## A. Software Implementation Reliability
+
+Software implementation reliability is supported by:
+
+- automated tests with `pytest`
+- static code checking with `ruff`
+- GitHub Actions CI
+- Git commit history
+- reproducible execution commands
+- CSV-based input/output formats
+
+The tests can be executed with:
+
+    uv run pytest
+
+At the time of this implementation, the test result is:
+
+    71 passed
+
+The lint check can be executed with:
+
+    uv run ruff check .
+
+At the time of this implementation, the lint result is:
+
+    All checks passed
+
+The application can be launched with:
+
+    uv run dep-cm-sim
+
+These checks support software-level reliability, but they do not prove scientific validity by themselves.
+
+---
+
+## B. Scientific Model Validity
+
+Scientific model validity should be evaluated separately from software correctness.
+
+This simulator supports scientific validation through:
+
+- equation-level implementation of `Re[K]` in `src/dep_cm_sim/equations.py`
+- reproduction of reference paper figures using the `論文図(a)〜(h)を再現` function
+- parameter CSV export/import for traceability
+- experimental data overlay
+- quantitative error evaluation against experimental data
+
+The CM factor calculation is separated from GUI code so that the numerical model can be inspected independently.
+
+The reference figure reproduction function is useful for checking whether the implementation can reproduce known trends under corresponding parameter conditions.
+
+Experimental data comparison provides both visual and quantitative checks using:
+
+- pointwise error
+- absolute error
+- MAE
+- RMSE
+- maximum absolute error
+
+However, scientific validity for a specific experiment still depends on:
+
+- whether the input parameters match the experimental condition
+- whether the model assumptions match the experimental setup
+- whether the simulation agrees with measured data
+- whether the experimental data quality is sufficient
+
+Therefore, when this simulator is used for research or publication, the parameter set, experimental data, and error evaluation results should be reported together.
+
+---
+
+## 日本語
+
+本シミュレータでは、シミュレーションされた Clausius-Mossotti 因子の実部 `Re[K]` と実験データを比較するために、以下の機能を実装しています。
+
+- Phase 6: 実験データ重ね描き
+- Phase 7: 実験データとシミュレーションの誤差評価
+- 信頼性・再現性・検証可能性の記録
+
+---
+
+## Phase 6: 実験データ重ね描き
+
+実験データはCSVから読み込むか、GUI上で手入力できます。
+
+標準CSV形式は以下です。
+
+    frequency_hz,value,label,plot_style
+
+各列の意味は以下です。
+
+| 列 | 意味 |
+|---|---|
+| `frequency_hz` | 実験周波数 [Hz] |
+| `value` | シミュレーションの `Re[K]` と比較する実験値 |
+| `label` | グラフ凡例に表示するラベル |
+| `plot_style` | 実験データの表示形式 |
+
+`plot_style` には以下を指定できます。
+
+| `plot_style` | 意味 |
+|---|---|
+| `scatter` | 点のみ |
+| `line` | 線のみ |
+| `scatter_line` | 点＋線 |
+
+主な実装ファイルは以下です。
+
+    src/dep_cm_sim/experimental_data.py
+    src/dep_cm_sim/gui/experimental_data_window.py
+    src/dep_cm_sim/gui/graph_window.py
+    src/dep_cm_sim/gui/parameter_window.py
+    tests/test_experimental_data.py
+
+この機能により、実験データを保存・再読込し、シミュレーション曲線と視覚的に比較できます。
+
+---
+
+## Phase 7: 誤差評価
+
+Phase 7では、実験データと現在のシミュレーション条件を定量的に比較します。
+
+計算フローは以下です。
+
+1. パラメータ入力ウィンドウから現在のシミュレーション条件を読み取る。
+2. `f_min`, `f_max`, `num_points` から周波数配列を生成する。
+3. 現在のパラメータで `Re[K]` 曲線を計算する。
+4. 実験データCSVを読み込む。
+5. 実験周波数点に対応するシミュレーション値を補間する。
+6. 各点の誤差と絶対誤差を計算する。
+7. MAE、RMSE、最大絶対誤差を計算する。
+8. 誤差評価結果をCSVとして保存する。
+
+誤差は以下で定義します。
+
+    error = experimental_value - simulated_value
+
+絶対誤差は以下で定義します。
+
+    absolute_error = |experimental_value - simulated_value|
+
+評価指標は以下です。
+
+| 指標 | 意味 |
+|---|---|
+| MAE | 平均絶対誤差 |
+| RMSE | 二乗平均平方根誤差 |
+| 最大絶対誤差 | 評価点の中で最も大きい絶対誤差 |
+| 評価点数 | 比較に使用した実験データ点数 |
+
+主な実装ファイルは以下です。
+
+    src/dep_cm_sim/error_evaluation.py
+    src/dep_cm_sim/gui/parameter_window.py
+    tests/test_error_evaluation.py
+
+---
+
+## A. ソフトウェア実装としての信頼性
+
+ソフトウェア実装としての信頼性は、以下によって確認できます。
+
+- `pytest` による自動テスト
+- `ruff` による静的解析
+- GitHub ActionsによるCI
+- Git履歴
+- 再現可能な実行手順
+- CSVによる入出力
+
+テストは以下で実行できます。
+
+    uv run pytest
+
+現時点での結果は以下です。
+
+    71 passed
+
+静的解析は以下で実行できます。
+
+    uv run ruff check .
+
+現時点での結果は以下です。
+
+    All checks passed
+
+アプリケーションは以下で起動できます。
+
+    uv run dep-cm-sim
+
+これらはソフトウェア実装としての信頼性を支えるものですが、それだけで科学的妥当性を証明するものではありません。
+
+---
+
+## B. 科学モデルとしての妥当性
+
+科学モデルとしての妥当性は、ソフトウェアテストだけでは証明できません。
+
+本シミュレータでは、以下によって科学モデルの妥当性を確認できるようにしています。
+
+- `src/dep_cm_sim/equations.py` における `Re[K]` の式実装
+- `論文図(a)〜(h)を再現` 機能による既存論文図の再現
+- パラメータCSVによる条件記録
+- 実験データとの重ね描き
+- 実験データとの定量的誤差評価
+
+CM因子の計算処理はGUIコードから分離しているため、数値モデルを独立して確認できます。
+
+参考文献図の再現機能は、対応するパラメータ条件において、実装が既知の傾向を再現できるかを確認するうえで有用です。
+
+実験データ比較では、以下を用いて視覚的・定量的に確認できます。
+
+- 各点の誤差
+- 絶対誤差
+- MAE
+- RMSE
+- 最大絶対誤差
+
+ただし、特定の実験条件における科学的妥当性は、以下に依存します。
+
+- 入力パラメータが実験条件と一致しているか
+- モデルの仮定が実験系に合っているか
+- シミュレーションが実測データと一致しているか
+- 実験データの品質が十分か
+
+したがって、研究や論文で使用する場合は、使用したパラメータ、実験データ、誤差評価結果を併せて示すことが望ましいです。
+
+---
 
 # Optimal Frequency Display / 最適周波数表示
 
@@ -600,7 +1140,6 @@ This feature is intended to support visual comparison of two DEP response curves
 - `f_opt` と `|ΔRe[K]|` を示す注釈
 
 この機能は、2つのDEP応答曲線を比較するための補助機能です。
-
 
 ---
 
@@ -750,6 +1289,14 @@ Run the demo plot script:
 
     PYTHONPATH=src uv run python src/dep_cm_sim/demo_plot.py
 
+Run the reference figure reproduction script:
+
+    PYTHONPATH=src uv run python src/dep_cm_sim/reproduce_paper_figure.py
+
+Start the GUI application:
+
+    uv run dep-cm-sim
+
 ## 日本語
 
 lintを実行します。
@@ -764,11 +1311,25 @@ lintを実行します。
 
     PYTHONPATH=src uv run python src/dep_cm_sim/demo_plot.py
 
+参考文献図の再現スクリプトを実行します。
+
+    PYTHONPATH=src uv run python src/dep_cm_sim/reproduce_paper_figure.py
+
+GUIアプリケーションを起動します。
+
+    uv run dep-cm-sim
+
 ---
 
 # Project Structure / プロジェクト構成
 
     dep-cm-factor-simulator/
+    - .github/workflows/
+    - docs/images/
+    - docs/images/gui_screenshot.png
+    - docs/images/reference_reproduction.png
+    - docs/images/opposite_sign_optimization.png
+    - docs/images/difference_only_optimization.png
     - src/dep_cm_sim/equations.py
     - src/dep_cm_sim/cell_templates.py
     - src/dep_cm_sim/plotter.py
@@ -776,13 +1337,19 @@ lintを実行します。
     - src/dep_cm_sim/reproduce_paper_figure.py
     - src/dep_cm_sim/parameter_io.py
     - src/dep_cm_sim/optimization.py
+    - src/dep_cm_sim/condition_optimizer.py
     - src/dep_cm_sim/paper_conditions.py
+    - src/dep_cm_sim/experimental_data.py
+    - src/dep_cm_sim/error_evaluation.py
     - src/dep_cm_sim/gui/parameter_window.py
     - src/dep_cm_sim/gui/graph_window.py
+    - src/dep_cm_sim/gui/experimental_data_window.py
     - tests/test_equations.py
     - tests/test_cell_templates.py
     - tests/test_optimization.py
     - tests/test_parameter_io.py
+    - tests/test_experimental_data.py
+    - tests/test_error_evaluation.py
     - pyproject.toml
     - uv.lock
     - README.md
@@ -793,12 +1360,16 @@ lintを実行します。
 
 ## English
 
-This software is intended for educational, simulation, and parameter-comparison purposes.
+This software is intended for educational, simulation, parameter-comparison, and validation-support purposes.
 
-Before using simulation results for formal academic or engineering conclusions, confirm the model assumptions, parameter units, and equation definitions with the original literature and appropriate domain experts.
+Before using simulation results for formal academic or engineering conclusions, confirm the model assumptions, parameter units, equation definitions, and experimental consistency with the original literature and appropriate domain experts.
+
+The automated tests and lint checks support software implementation reliability, but they do not prove scientific validity by themselves. Scientific validity should be evaluated using appropriate experimental conditions, experimental data quality, and quantitative comparison results.
 
 ## 日本語
 
-本ソフトウェアは、教育用途、シミュレーション、およびパラメータ比較を目的としたものです。
+本ソフトウェアは、教育用途、シミュレーション、パラメータ比較、および検証支援を目的としたものです。
 
-シミュレーション結果を正式な学術的・工学的結論に用いる前に、モデルの仮定、パラメータ単位、式の定義を原著論文および専門分野の知見に基づいて確認することを推奨します。
+シミュレーション結果を正式な学術的・工学的結論に用いる前に、モデルの仮定、パラメータ単位、式の定義、実験条件との整合性を、原著論文および専門分野の知見に基づいて確認することを推奨します。
+
+自動テストやlintはソフトウェア実装としての信頼性を支えるものですが、それだけで科学的妥当性を証明するものではありません。科学的妥当性は、適切な実験条件、実験データの品質、定量的な比較結果に基づいて評価する必要があります。
