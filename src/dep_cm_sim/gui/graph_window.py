@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+from matplotlib.artist import Artist
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from dep_cm_sim.condition_optimizer import find_optimal_opposite_sign_frequency
-from dep_cm_sim.optimization import find_optimal_frequency
 from matplotlib.figure import Figure
+from matplotlib.font_manager import FontProperties, fontManager
+from matplotlib.text import Text
+from matplotlib.typing import ColorType
 from numpy.typing import NDArray
 from PySide6.QtWidgets import (
     QComboBox,
@@ -22,12 +23,39 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from dep_cm_sim.condition_optimizer import find_optimal_opposite_sign_frequency
+from dep_cm_sim.crossover_display import build_crossover_summary
+from dep_cm_sim.equations import find_crossover_frequencies
+from dep_cm_sim.optimization import find_optimal_frequency
+
 
 @dataclass
 class CurveData:
     label: str
-    frequencies: object
-    values: object
+    frequencies: NDArray[np.float64]
+    values: NDArray[np.float64]
+
+
+def find_japanese_font_properties() -> FontProperties | None:
+    """利用可能な日本語フォントを優先順位順に取得する。"""
+
+    candidates = (
+        "Hiragino Sans",
+        "BIZ UDGothic",
+        "YuGothic",
+        "Yu Gothic",
+        "Noto Sans CJK JP",
+        "Noto Sans JP",
+        "IPAexGothic",
+        "IPAGothic",
+    )
+    installed_fonts = {font.name for font in fontManager.ttflist}
+
+    for candidate in candidates:
+        if candidate in installed_fonts:
+            return FontProperties(family=candidate)
+
+    return None
 
 
 class GraphWindow(QMainWindow):
@@ -41,7 +69,11 @@ class GraphWindow(QMainWindow):
         self.canvas = FigureCanvas(self.figure)
         self.ax = self.figure.add_subplot(111)
         self.curve_data_list: list[CurveData] = []
-        self.optimal_marker_handles: list[object] = []
+        self.optimal_marker_handles: list[Artist] = []
+        self.crossover_marker_handles: list[Artist] = []
+        self.crossover_summaries: list[str] = []
+        self.crossover_info_handle: Text | None = None
+        self.crossover_font_properties = find_japanese_font_properties()
 
         central_widget = QWidget()
         layout = QVBoxLayout()
@@ -82,6 +114,60 @@ class GraphWindow(QMainWindow):
         self.ax.grid(True, which="both")
         self.ax.axhline(0.0, linewidth=1.0)
 
+    def _refresh_crossover_info(self) -> None:
+        if self.crossover_info_handle is not None:
+            try:
+                self.crossover_info_handle.remove()
+            except ValueError:
+                pass
+
+            self.crossover_info_handle = None
+
+        if not self.crossover_summaries:
+            return
+
+        self.crossover_info_handle = self.ax.text(
+            0.98,
+            0.98,
+            "\n\n".join(self.crossover_summaries),
+            transform=self.ax.transAxes,
+            horizontalalignment="right",
+            verticalalignment="top",
+            fontsize=8,
+            fontproperties=self.crossover_font_properties,
+            bbox={
+                "boxstyle": "round",
+                "facecolor": "white",
+                "alpha": 0.8,
+            },
+        )
+
+    def _add_crossover_markers(
+        self,
+        frequency_hz: NDArray[np.float64],
+        cm_factor_real: NDArray[np.float64],
+        label: str,
+        color: ColorType,
+    ) -> None:
+        results = find_crossover_frequencies(
+            frequency_hz=frequency_hz,
+            re_k_values=cm_factor_real,
+        )
+
+        for result in results:
+            vertical_line = self.ax.axvline(
+                result.frequency_hz,
+                linestyle=":",
+                linewidth=1.2,
+                color=color,
+                alpha=0.8,
+                label="_nolegend_",
+            )
+            self.crossover_marker_handles.append(vertical_line)
+
+        self.crossover_summaries.append(build_crossover_summary(label, results))
+        self._refresh_crossover_info()
+
     def add_curve(
         self,
         frequency_hz: NDArray[np.float64],
@@ -99,13 +185,23 @@ class GraphWindow(QMainWindow):
         if np.isnan(cm_factor_real).any():
             raise ValueError("cm_factor_real must not contain NaN.")
 
-        self.ax.plot(frequency_hz, cm_factor_real, label=label)
+        (curve_line,) = self.ax.plot(
+            frequency_hz,
+            cm_factor_real,
+            label=label,
+        )
         self.curve_data_list.append(
             CurveData(
                 label=label,
                 frequencies=frequency_hz,
                 values=cm_factor_real,
             )
+        )
+        self._add_crossover_markers(
+            frequency_hz=frequency_hz,
+            cm_factor_real=cm_factor_real,
+            label=label,
+            color=curve_line.get_color(),
         )
         self.ax.legend()
         self.figure.tight_layout()
@@ -186,6 +282,9 @@ class GraphWindow(QMainWindow):
         self.ax.clear()
         self.curve_data_list.clear()
         self.optimal_marker_handles.clear()
+        self.crossover_marker_handles.clear()
+        self.crossover_summaries.clear()
+        self.crossover_info_handle = None
         self._setup_axes()
         self.figure.tight_layout()
         self.canvas.draw()
@@ -310,4 +409,3 @@ class GraphWindow(QMainWindow):
         self.optimal_marker_handles.extend([vertical_line, annotation])
         self.ax.legend()
         self.canvas.draw()
-
