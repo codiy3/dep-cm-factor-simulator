@@ -10,6 +10,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties, fontManager
 from matplotlib.text import Text
+from matplotlib.ticker import NullLocator
 from matplotlib.typing import ColorType
 from numpy.typing import NDArray
 from PySide6.QtWidgets import (
@@ -27,6 +28,38 @@ from dep_cm_sim.condition_optimizer import find_optimal_opposite_sign_frequency
 from dep_cm_sim.crossover_display import build_crossover_summary
 from dep_cm_sim.equations import find_crossover_frequencies
 from dep_cm_sim.optimization import find_optimal_frequency
+
+
+FREQUENCY_X_MIN_HZ = 1.0
+FREQUENCY_X_MAX_HZ = 1.0e10
+
+FREQUENCY_MAJOR_TICKS: tuple[float, ...] = (
+    1.0,
+    1.0e1,
+    1.0e2,
+    1.0e3,
+    1.0e4,
+    1.0e5,
+    1.0e6,
+    1.0e7,
+    1.0e8,
+    1.0e9,
+    1.0e10,
+)
+
+FREQUENCY_MAJOR_TICK_LABELS: tuple[str, ...] = (
+    "1",
+    "10",
+    r"$10^{2}$",
+    r"$10^{3}$",
+    r"$10^{4}$",
+    r"$10^{5}$",
+    r"$10^{6}$",
+    r"$10^{7}$",
+    r"$10^{8}$",
+    r"$10^{9}$",
+    r"$10^{10}$",
+)
 
 
 @dataclass
@@ -108,11 +141,33 @@ class GraphWindow(QMainWindow):
 
     def _setup_axes(self) -> None:
         self.ax.set_xscale("log")
+        self.ax.set_xticks(
+            FREQUENCY_MAJOR_TICKS,
+            labels=FREQUENCY_MAJOR_TICK_LABELS,
+        )
+        self.ax.xaxis.set_minor_locator(NullLocator())
+        self.ax.set_xlim(FREQUENCY_X_MIN_HZ, FREQUENCY_X_MAX_HZ)
         self.ax.set_xlabel("Frequency [Hz]")
         self.ax.set_ylabel("Re[K]")
         self.ax.set_title("Real part of Clausius-Mossotti factor")
-        self.ax.grid(True, which="both")
-        self.ax.axhline(0.0, linewidth=1.0)
+        self.ax.set_axisbelow(True)
+        self.ax.grid(
+            True,
+            which="major",
+            axis="both",
+            linestyle="--",
+            linewidth=0.8,
+            alpha=0.5,
+        )
+        self.ax.axhline(
+            0.0,
+            color="0.35",
+            linestyle="-",
+            linewidth=1.2,
+            alpha=0.9,
+            zorder=1.5,
+            label="_nolegend_",
+        )
 
     def _refresh_crossover_info(self) -> None:
         if self.crossover_info_handle is not None:
@@ -161,6 +216,7 @@ class GraphWindow(QMainWindow):
                 linewidth=1.2,
                 color=color,
                 alpha=0.8,
+                zorder=2.5,
                 label="_nolegend_",
             )
             self.crossover_marker_handles.append(vertical_line)
@@ -307,6 +363,9 @@ class GraphWindow(QMainWindow):
         vertical_line = self.ax.axvline(
             frequency_hz,
             linestyle="--",
+            linewidth=1.6,
+            alpha=0.9,
+            zorder=3.0,
             label="_nolegend_",
         )
 
@@ -385,6 +444,9 @@ class GraphWindow(QMainWindow):
         vertical_line = self.ax.axvline(
             result.frequency_hz,
             linestyle="--",
+            linewidth=1.6,
+            alpha=0.9,
+            zorder=3.0,
             label="_nolegend_",
         )
 
