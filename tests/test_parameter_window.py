@@ -1,11 +1,15 @@
 import pytest
 from PySide6.QtWidgets import QApplication
 
+
 from dep_cm_sim.gui.parameter_window import (
     PARAMETER_DEFINITIONS,
     ParameterWindow,
     build_parameter_snapshots,
 )
+
+
+pytestmark = pytest.mark.usefixtures("qt_event_loop")
 
 
 def make_parameters() -> dict[str, float | int | str]:

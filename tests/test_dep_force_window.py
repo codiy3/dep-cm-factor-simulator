@@ -4,12 +4,16 @@ import numpy as np
 import pytest
 from PySide6.QtWidgets import QApplication
 
+
 from dep_cm_sim.dep_force import ElectricFieldMode
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.gui.dep_force_window import (
     DepForceWindow,
     format_dep_force_result,
 )
+
+
+pytestmark = pytest.mark.usefixtures("qt_event_loop")
 
 
 def make_parameters() -> dict[str, float | int | str]:
