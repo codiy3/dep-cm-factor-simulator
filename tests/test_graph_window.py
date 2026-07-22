@@ -1,10 +1,6 @@
-import os
-
 import numpy as np
 import pytest
 from PySide6.QtWidgets import QApplication
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from dep_cm_sim.gui.graph_window import GraphWindow
 
