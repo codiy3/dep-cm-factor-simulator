@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
@@ -30,6 +31,7 @@ from dep_cm_sim.cell_templates import (
     save_user_cell_template,
 )
 from dep_cm_sim.condition_optimizer import find_optimal_solution_conductivity
+from dep_cm_sim.csv_export import ParameterSnapshot
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.error_evaluation import (
     evaluate_simulation_error,
@@ -137,6 +139,42 @@ PARAMETER_DEFINITIONS: list[ParameterDefinition] = [
         value_type="int",
     ),
 ]
+
+
+def build_parameter_snapshots(
+    parameters: Mapping[str, float | int | str],
+    *,
+    overrides: Mapping[str, float | int | str] | None = None,
+) -> tuple[ParameterSnapshot, ...]:
+    """実際の計算条件からCSV保存用スナップショットを生成する。"""
+
+    snapshot_values = dict(parameters)
+
+    if overrides is not None:
+        snapshot_values.update(overrides)
+
+    snapshots: list[ParameterSnapshot] = []
+
+    for definition in PARAMETER_DEFINITIONS:
+        # 曲線ラベルはsummary CSVのcurve_label列へ保存する。
+        if definition.key == "graph_label":
+            continue
+
+        if definition.key not in snapshot_values:
+            raise ValueError(
+                f"Parameter snapshot is missing required key: {definition.key}"
+            )
+
+        snapshots.append(
+            ParameterSnapshot(
+                key=definition.key,
+                name=definition.name,
+                value=snapshot_values[definition.key],
+                unit=definition.unit,
+            )
+        )
+
+    return tuple(snapshots)
 
 
 class ParameterWindow(QMainWindow):
@@ -506,15 +544,38 @@ class ParameterWindow(QMainWindow):
             )
 
             graph_window = GraphWindow()
+            cell_1_parameters = build_parameter_snapshots(
+                parameters,
+                overrides={
+                    "membrane_capacitance": cell_1.membrane_capacitance,
+                    "radius_m": cell_1.radius_m,
+                    "eps_c_relative": cell_1.eps_c_relative,
+                    "sigma_c": cell_1.sigma_c,
+                    "sigma_s": result.optimal_sigma_s,
+                },
+            )
+            cell_2_parameters = build_parameter_snapshots(
+                parameters,
+                overrides={
+                    "membrane_capacitance": cell_2.membrane_capacitance,
+                    "radius_m": cell_2.radius_m,
+                    "eps_c_relative": cell_2.eps_c_relative,
+                    "sigma_c": cell_2.sigma_c,
+                    "sigma_s": result.optimal_sigma_s,
+                },
+            )
+
             graph_window.add_curve(
                 frequency_hz,
                 values_1,
                 f"{cell_1.name} at sigma_s={result.optimal_sigma_s:.2e} S/m",
+                parameters=cell_1_parameters,
             )
             graph_window.add_curve(
                 frequency_hz,
                 values_2,
                 f"{cell_2.name} at sigma_s={result.optimal_sigma_s:.2e} S/m",
+                parameters=cell_2_parameters,
             )
             graph_window.show_optimization_result_marker(
                 frequency_hz=result.optimal_frequency_hz,
@@ -605,7 +666,14 @@ class ParameterWindow(QMainWindow):
         if num_points < 2:
             raise ValueError("計算点数 N は2以上にしてください。")
 
-    def calculate_curve(self) -> tuple[np.ndarray, np.ndarray, str]:
+    def calculate_curve(
+        self,
+    ) -> tuple[
+        np.ndarray,
+        np.ndarray,
+        str,
+        tuple[ParameterSnapshot, ...],
+    ]:
         parameters = self.read_parameters()
         self.validate_parameters(parameters)
 
@@ -632,16 +700,28 @@ class ParameterWindow(QMainWindow):
         else:
             label = f"sigma_s={float(parameters['sigma_s']):.2e} S/m"
 
-        return frequency_hz, cm_factor_real, label
+        parameter_snapshots = build_parameter_snapshots(parameters)
+
+        return frequency_hz, cm_factor_real, label, parameter_snapshots
 
     def plot_on_current_graph(self) -> None:
         try:
-            frequency_hz, cm_factor_real, label = self.calculate_curve()
+            (
+                frequency_hz,
+                cm_factor_real,
+                label,
+                parameter_snapshots,
+            ) = self.calculate_curve()
 
             if self.graph_window is None:
                 self.graph_window = GraphWindow()
 
-            self.graph_window.add_curve(frequency_hz, cm_factor_real, label)
+            self.graph_window.add_curve(
+                frequency_hz,
+                cm_factor_real,
+                label,
+                parameters=parameter_snapshots,
+            )
             self.graph_window.show()
 
         except Exception as error:
@@ -649,10 +729,20 @@ class ParameterWindow(QMainWindow):
 
     def plot_on_new_graph_window(self) -> None:
         try:
-            frequency_hz, cm_factor_real, label = self.calculate_curve()
+            (
+                frequency_hz,
+                cm_factor_real,
+                label,
+                parameter_snapshots,
+            ) = self.calculate_curve()
 
             graph_window = GraphWindow()
-            graph_window.add_curve(frequency_hz, cm_factor_real, label)
+            graph_window.add_curve(
+                frequency_hz,
+                cm_factor_real,
+                label,
+                parameters=parameter_snapshots,
+            )
             graph_window.show()
 
             self.extra_graph_windows.append(graph_window)
@@ -685,7 +775,16 @@ class ParameterWindow(QMainWindow):
                 )
 
                 label = f"{paper_label} sigma_s={sigma_s:.1e} S/m"
-                graph_window.add_curve(frequency_hz, cm_factor_real, label)
+                parameter_snapshots = build_parameter_snapshots(
+                    parameters,
+                    overrides={"sigma_s": sigma_s},
+                )
+                graph_window.add_curve(
+                    frequency_hz,
+                    cm_factor_real,
+                    label,
+                    parameters=parameter_snapshots,
+                )
 
             graph_window.show()
             self.extra_graph_windows.append(graph_window)
