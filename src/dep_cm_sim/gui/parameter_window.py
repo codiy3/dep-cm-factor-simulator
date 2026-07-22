@@ -33,6 +33,7 @@ from dep_cm_sim.cell_templates import (
 from dep_cm_sim.condition_optimizer import find_optimal_solution_conductivity
 from dep_cm_sim.csv_export import ParameterSnapshot
 from dep_cm_sim.equations import calculate_cm_factor_real
+from dep_cm_sim.gui.dep_force_window import DepForceWindow
 from dep_cm_sim.gui.graph_window import GraphWindow
 from dep_cm_sim.paper_conditions import PAPER_FIGURE_SIGMA_S_CONDITIONS
 from dep_cm_sim.parameter_io import load_parameters_from_csv, save_parameters_to_csv
@@ -181,6 +182,7 @@ class ParameterWindow(QMainWindow):
         self.input_widgets: dict[str, QLineEdit] = {}
         self.graph_window: GraphWindow | None = None
         self.extra_graph_windows: list[GraphWindow] = []
+        self.dep_force_window: DepForceWindow | None = None
         self.cell_templates = load_available_cell_templates()
 
         central_widget = QWidget()
@@ -302,6 +304,10 @@ class ParameterWindow(QMainWindow):
         paper_figure_button = QPushButton("論文図(a)〜(h)を再現")
         paper_figure_button.clicked.connect(self.plot_paper_figure_reproduction)
         button_layout.addWidget(paper_figure_button, 2, 0, 1, 3)
+
+        self.dep_force_window_button = QPushButton("DEP力計算ウィンドウを開く")
+        self.dep_force_window_button.clicked.connect(self.open_dep_force_window)
+        button_layout.addWidget(self.dep_force_window_button, 3, 0, 1, 3)
 
         layout.addLayout(button_layout)
 
@@ -772,6 +778,18 @@ class ParameterWindow(QMainWindow):
 
         except Exception as error:
             self.show_generation_error(error)
+
+    def open_dep_force_window(self) -> None:
+        """現在のパラメータを参照するDEP力計算ウィンドウを開く。"""
+
+        if self.dep_force_window is None:
+            self.dep_force_window = DepForceWindow(
+                parameter_provider=self.read_parameters,
+            )
+
+        self.dep_force_window.show()
+        self.dep_force_window.raise_()
+        self.dep_force_window.activateWindow()
 
     def save_parameters_csv(self) -> None:
         try:
