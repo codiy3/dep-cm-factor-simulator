@@ -38,6 +38,7 @@ from dep_cm_sim.error_evaluation import (
     save_error_evaluation_result_to_csv,
 )
 from dep_cm_sim.experimental_data import load_experimental_data_from_csv
+from dep_cm_sim.gui.dep_force_window import DepForceWindow
 from dep_cm_sim.gui.experimental_data_window import ExperimentalDataWindow
 from dep_cm_sim.gui.graph_window import GraphWindow
 from dep_cm_sim.paper_conditions import PAPER_FIGURE_SIGMA_S_CONDITIONS
@@ -188,6 +189,7 @@ class ParameterWindow(QMainWindow):
         self.graph_window: GraphWindow | None = None
         self.extra_graph_windows: list[GraphWindow] = []
         self.experimental_data_window: ExperimentalDataWindow | None = None
+        self.dep_force_window: DepForceWindow | None = None
         self.cell_templates = load_available_cell_templates()
 
         central_widget = QWidget()
@@ -314,13 +316,17 @@ class ParameterWindow(QMainWindow):
         experimental_csv_button.clicked.connect(self.overlay_experimental_data_csv)
         button_layout.addWidget(experimental_csv_button, 3, 0, 1, 3)
 
+        self.dep_force_window_button = QPushButton("DEP力計算ウィンドウを開く")
+        self.dep_force_window_button.clicked.connect(self.open_dep_force_window)
+        button_layout.addWidget(self.dep_force_window_button, 4, 0, 1, 3)
+
         experimental_data_window_button = QPushButton("実験データ入力ウィンドウを開く")
         experimental_data_window_button.clicked.connect(self.open_experimental_data_window)
-        button_layout.addWidget(experimental_data_window_button, 4, 0, 1, 3)
+        button_layout.addWidget(experimental_data_window_button, 5, 0, 1, 3)
 
         error_evaluation_button = QPushButton("実験データCSVと現在のシミュレーションを誤差評価")
         error_evaluation_button.clicked.connect(self.evaluate_experimental_data_error)
-        button_layout.addWidget(error_evaluation_button, 5, 0, 1, 3)
+        button_layout.addWidget(error_evaluation_button, 6, 0, 1, 3)
 
         layout.addLayout(button_layout)
 
@@ -868,6 +874,18 @@ class ParameterWindow(QMainWindow):
                 f"最大絶対誤差: {result.max_absolute_error:.6g}"
             ),
         )
+
+    def open_dep_force_window(self) -> None:
+        """現在のパラメータを参照するDEP力計算ウィンドウを開く。"""
+
+        if self.dep_force_window is None:
+            self.dep_force_window = DepForceWindow(
+                parameter_provider=self.read_parameters,
+            )
+
+        self.dep_force_window.show()
+        self.dep_force_window.raise_()
+        self.dep_force_window.activateWindow()
 
     def open_experimental_data_window(self) -> None:
         if self.experimental_data_window is None:
