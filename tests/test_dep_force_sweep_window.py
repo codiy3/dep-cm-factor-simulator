@@ -98,7 +98,7 @@ def test_build_dep_force_metric_summary_with_crossovers() -> None:
     )
 
     assert summary == (
-        "Solution Cond: 100 mS/m\n"
+        "Solution Cond: 0.100 S/m\n"
         "Crossover Freq:\n"
         "  1: 12.345 kHz\n"
         "  2: 2.5000 MHz\n"

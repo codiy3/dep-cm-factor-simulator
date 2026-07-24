@@ -32,9 +32,11 @@ def test_format_frequency_hz(
     ("value", "expected"),
     [
         (2.0e-4, "0.20000 mS/m"),
-        (0.1, "100.00 mS/m"),
+        (0.1, "0.10000 S/m"),
         (1.0, "1.0000 S/m"),
         (5.0e-7, "0.50000 µS/m"),
+        (1.0e-9, "1.0000 nS/m"),
+        (1.0e-12, "1.0000 pS/m"),
     ],
 )
 def test_format_conductivity_s_m(
@@ -50,8 +52,21 @@ def test_format_conductivity_s_m(
     )
 
 
-def test_format_conductivity_uses_three_significant_digits_by_default() -> None:
-    assert format_conductivity_s_m(2.0e-4) == "0.200 mS/m"
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (1.0e-1, "0.100 S/m"),
+        (2.0e-4, "0.200 mS/m"),
+        (5.0e-7, "0.500 µS/m"),
+        (1.0e-9, "1.00 nS/m"),
+        (1.0e-12, "1.00 pS/m"),
+    ],
+)
+def test_format_conductivity_uses_engineering_units(
+    value: float,
+    expected: str,
+) -> None:
+    assert format_conductivity_s_m(value) == expected
 
 
 @pytest.mark.parametrize(

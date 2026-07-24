@@ -83,7 +83,7 @@ def format_conductivity_s_m(
     *,
     significant_digits: int = 3,
 ) -> str:
-    """導電率をS/m、mS/m、µS/mのいずれかで表示する。"""
+    """導電率をS/m、mS/m、µS/m、nS/m、pS/mで表示する。"""
 
     value_s_m = _validate_finite(
         value_s_m,
@@ -96,15 +96,21 @@ def format_conductivity_s_m(
     if value_s_m == 0.0:
         return "0 S/m"
 
-    if value_s_m >= 1.0:
+    if value_s_m >= 1.0e-1:
         scaled_value = value_s_m
         unit = "S/m"
-    elif value_s_m >= 1.0e-6:
+    elif value_s_m >= 1.0e-4:
         scaled_value = value_s_m * 1.0e3
         unit = "mS/m"
-    else:
+    elif value_s_m >= 1.0e-7:
         scaled_value = value_s_m * 1.0e6
         unit = "µS/m"
+    elif value_s_m >= 1.0e-10:
+        scaled_value = value_s_m * 1.0e9
+        unit = "nS/m"
+    else:
+        scaled_value = value_s_m * 1.0e12
+        unit = "pS/m"
 
     return (
         f"{_format_significant(scaled_value, significant_digits=significant_digits)} "
