@@ -30,6 +30,7 @@ from dep_cm_sim.dep_force_sweep import (
 )
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.gui.dep_force_sweep_window import DepForceSweepWindow
+from dep_cm_sim.gui.value_format import format_conductivity_s_m
 
 ParameterProvider = Callable[[], Mapping[str, float | int | str]]
 
@@ -341,7 +342,8 @@ class DepForceWindow(QWidget):
                 label = graph_label
             else:
                 label = (
-                    f"sigma_s={float(parameters['sigma_s']):.2e} S/m"
+                    "sigma_s="
+                    f"{format_conductivity_s_m(float(parameters['sigma_s']))}"
                 )
 
             if self.sweep_window is None:

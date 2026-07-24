@@ -65,11 +65,11 @@ def test_build_dep_force_metric_summary_without_crossover() -> None:
     )
 
     assert summary == (
-        "Solution Cond: 2.0000e-04 S/m\n"
+        "Solution Cond: 0.20000 mS/m\n"
         "Crossover Freq: None\n"
-        "F_DEP_Max: 7.5000e-01 pN\n"
-        "F_DEP_Min: -5.0000e-01 pN\n"
-        "F_DEP_Magnitude: 1.2500e+00 pN"
+        "F_DEP_Max: 0.75000 pN\n"
+        "F_DEP_Min: -0.50000 pN\n"
+        "F_DEP_Magnitude: 1.2500 pN"
     )
 
 
@@ -98,13 +98,13 @@ def test_build_dep_force_metric_summary_with_crossovers() -> None:
     )
 
     assert summary == (
-        "Solution Cond: 1.0000e-01 S/m\n"
+        "Solution Cond: 100.00 mS/m\n"
         "Crossover Freq:\n"
-        "  1: 1.2345e+04 Hz\n"
-        "  2: 2.5000e+06 Hz\n"
-        "F_DEP_Max: 1.6000e+00 pN\n"
-        "F_DEP_Min: -8.0000e-01 pN\n"
-        "F_DEP_Magnitude: 2.4000e+00 pN"
+        "  1: 12.345 kHz\n"
+        "  2: 2.5000 MHz\n"
+        "F_DEP_Max: 1.6000 pN\n"
+        "F_DEP_Min: -0.80000 pN\n"
+        "F_DEP_Magnitude: 2.4000 pN"
     )
 
 

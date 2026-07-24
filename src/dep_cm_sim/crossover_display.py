@@ -6,6 +6,12 @@ import numpy as np
 from numpy.typing import NDArray
 
 from dep_cm_sim.equations import CrossoverFrequencyResult
+from dep_cm_sim.gui.value_format import (
+    format_conductivity_s_m,
+    format_dimensionless,
+    format_force_pn,
+    format_frequency_hz,
+)
 
 
 def build_crossover_summary(
@@ -20,11 +26,15 @@ def build_crossover_summary(
     lines = [f"{label}: Re[K] = 0"]
 
     if len(results) == 1:
-        lines.append(f"f_cross = {results[0].frequency_hz:.2e} Hz")
+        lines.append(
+            f"f_cross = {format_frequency_hz(results[0].frequency_hz)}"
+        )
         return "\n".join(lines)
 
     for index, result in enumerate(results, start=1):
-        lines.append(f"f_cross,{index} = {result.frequency_hz:.2e} Hz")
+        lines.append(
+            f"f_cross,{index} = {format_frequency_hz(result.frequency_hz)}"
+        )
 
     return "\n".join(lines)
 
@@ -58,7 +68,7 @@ def build_re_k_metric_summary(
         lines = [
             (
                 "Solution Cond: "
-                f"{solution_conductivity_s_m:.4e} S/m"
+                f"{format_conductivity_s_m(solution_conductivity_s_m)}"
             )
         ]
 
@@ -70,7 +80,7 @@ def build_re_k_metric_summary(
             start=1,
         ):
             lines.append(
-                f"  {index}: {result.frequency_hz:.4e} Hz"
+                f"  {index}: {format_frequency_hz(result.frequency_hz)}"
             )
     else:
         lines.append("Crossover Freq: None")
@@ -81,9 +91,12 @@ def build_re_k_metric_summary(
 
     lines.extend(
         [
-            f"Re[K]_Max: {re_k_max:.4e}",
-            f"Re[K]_Min: {re_k_min:.4e}",
-            f"Re[K]_Magnitude: {re_k_magnitude:.4e}",
+            f"Re[K]_Max: {format_dimensionless(re_k_max)}",
+            f"Re[K]_Min: {format_dimensionless(re_k_min)}",
+            (
+                "Re[K]_Magnitude: "
+                f"{format_dimensionless(re_k_magnitude)}"
+            ),
         ]
     )
 
@@ -118,7 +131,7 @@ def build_dep_force_metric_summary(
     lines = [
         (
             "Solution Cond: "
-            f"{solution_conductivity_s_m:.4e} S/m"
+            f"{format_conductivity_s_m(solution_conductivity_s_m)}"
         )
     ]
 
@@ -130,7 +143,7 @@ def build_dep_force_metric_summary(
             start=1,
         ):
             lines.append(
-                f"  {index}: {result.frequency_hz:.4e} Hz"
+                f"  {index}: {format_frequency_hz(result.frequency_hz)}"
             )
     else:
         lines.append("Crossover Freq: None")
@@ -141,11 +154,11 @@ def build_dep_force_metric_summary(
 
     lines.extend(
         [
-            f"F_DEP_Max: {force_max_pn:.4e} pN",
-            f"F_DEP_Min: {force_min_pn:.4e} pN",
+            f"F_DEP_Max: {format_force_pn(force_max_pn)}",
+            f"F_DEP_Min: {format_force_pn(force_min_pn)}",
             (
                 "F_DEP_Magnitude: "
-                f"{force_magnitude_pn:.4e} pN"
+                f"{format_force_pn(force_magnitude_pn)}"
             ),
         ]
     )

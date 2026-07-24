@@ -18,7 +18,7 @@ def test_build_crossover_summary_with_one_result() -> None:
 
     summary = build_crossover_summary("curve A", results)
 
-    assert summary == ("curve A: Re[K] = 0\nf_cross = 1.23e+04 Hz")
+    assert summary == ("curve A: Re[K] = 0\nf_cross = 12.345 kHz")
 
 
 def test_build_crossover_summary_with_multiple_results() -> None:
@@ -37,7 +37,7 @@ def test_build_crossover_summary_with_multiple_results() -> None:
 
     summary = build_crossover_summary("curve B", results)
 
-    assert summary == ("curve B: Re[K] = 0\nf_cross,1 = 1.00e+03 Hz\nf_cross,2 = 2.50e+06 Hz")
+    assert summary == ("curve B: Re[K] = 0\nf_cross,1 = 1.0000 kHz\nf_cross,2 = 2.5000 MHz")
 
 
 def test_build_crossover_summary_without_result() -> None:
@@ -69,9 +69,9 @@ def test_build_crossover_summary_keeps_results_separate_by_curve() -> None:
     )
 
     assert "curve A" in curve_a_summary
-    assert "2.00e+05" not in curve_a_summary
+    assert "200.00 kHz" not in curve_a_summary
     assert "curve B" in curve_b_summary
-    assert "1.00e+04" not in curve_b_summary
+    assert "10.000 kHz" not in curve_b_summary
 
 
 def test_build_re_k_metric_summary() -> None:
@@ -99,13 +99,13 @@ def test_build_re_k_metric_summary() -> None:
     )
 
     assert summary == (
-        "Solution Cond: 2.0000e-04 S/m\n"
+        "Solution Cond: 0.20000 mS/m\n"
         "Crossover Freq:\n"
-        "  1: 1.2345e+04 Hz\n"
-        "  2: 2.5000e+06 Hz\n"
-        "Re[K]_Max: 9.8000e-01\n"
-        "Re[K]_Min: -5.0000e-01\n"
-        "Re[K]_Magnitude: 1.4800e+00"
+        "  1: 12.345 kHz\n"
+        "  2: 2.5000 MHz\n"
+        "Re[K]_Max: 0.98000\n"
+        "Re[K]_Min: -0.50000\n"
+        "Re[K]_Magnitude: 1.4800"
     )
 
 
@@ -124,7 +124,7 @@ def test_build_re_k_metric_summary_without_crossover() -> None:
     assert summary == (
         "Solution Cond: N/A\n"
         "Crossover Freq: None\n"
-        "Re[K]_Max: 3.0000e-01\n"
-        "Re[K]_Min: 1.0000e-01\n"
-        "Re[K]_Magnitude: 2.0000e-01"
+        "Re[K]_Max: 0.30000\n"
+        "Re[K]_Min: 0.10000\n"
+        "Re[K]_Magnitude: 0.20000"
     )
