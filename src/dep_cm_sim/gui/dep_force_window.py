@@ -17,13 +17,17 @@ from PySide6.QtWidgets import (
 )
 
 from dep_cm_sim.dep_force import (
+    ElectricFieldResult,
     DepForceResult,
     ElectricFieldMode,
     calculate_dep_force,
     calculate_gradient_from_vpp,
     create_direct_electric_field,
 )
-from dep_cm_sim.dep_force_sweep import calculate_dep_force_sweep
+from dep_cm_sim.dep_force_sweep import (
+    DepForceSweepResult,
+    calculate_dep_force_sweep,
+)
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.gui.dep_force_sweep_window import DepForceSweepWindow
 
@@ -276,7 +280,7 @@ class DepForceWindow(QWidget):
             electric_field=electric_field,
         )
 
-    def _create_electric_field_from_inputs(self):
+    def _create_electric_field_from_inputs(self) -> ElectricFieldResult:
         """現在選択されている電場入力方式から電場条件を生成する。"""
 
         mode = self.mode_combo.currentData()
@@ -304,7 +308,7 @@ class DepForceWindow(QWidget):
 
         raise ValueError("電場入力方式を選択してください。")
 
-    def calculate_frequency_sweep_result(self):
+    def calculate_frequency_sweep_result(self) -> DepForceSweepResult:
         """ParameterWindowの周波数範囲でDEP力を掃引計算する。"""
 
         parameters = self.parameter_provider()
