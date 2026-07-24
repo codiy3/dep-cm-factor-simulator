@@ -265,3 +265,108 @@ def test_dep_force_window_reset_clears_only_dep_inputs() -> None:
         assert not window.gradient_factor_input.isEnabled()
     finally:
         window.close()
+
+
+def test_dep_force_window_creates_frequency_sweep_button() -> None:
+    window = create_dep_force_window()
+
+    try:
+        assert (
+            window.sweep_button.text()
+            == "DEP力の周波数掃引グラフを表示"
+        )
+    finally:
+        window.close()
+
+
+def test_dep_force_window_calculates_frequency_sweep() -> None:
+    window = create_dep_force_window()
+
+    try:
+        window.direct_gradient_input.setText("1.0e12")
+
+        result = window.calculate_frequency_sweep_result()
+
+        assert result.frequency_hz.size == 1000
+        assert result.frequency_hz[0] == pytest.approx(1.0)
+        assert result.frequency_hz[-1] == pytest.approx(1.0e10)
+        assert result.force_pn_values.size == 1000
+    finally:
+        window.close()
+
+
+def test_dep_force_window_frequency_sweep_uses_current_provider_values() -> None:
+    parameters = make_parameters()
+    window = create_dep_force_window(parameters)
+
+    try:
+        window.direct_gradient_input.setText("1.0e12")
+        first_result = window.calculate_frequency_sweep_result()
+
+        parameters["f_min"] = 10.0
+        parameters["f_max"] = 1.0e6
+        parameters["num_points"] = 25
+
+        second_result = window.calculate_frequency_sweep_result()
+
+        assert first_result.frequency_hz.size == 1000
+        assert second_result.frequency_hz.size == 25
+        assert second_result.frequency_hz[0] == pytest.approx(10.0)
+        assert second_result.frequency_hz[-1] == pytest.approx(1.0e6)
+    finally:
+        window.close()
+        if window.sweep_window is not None:
+            window.sweep_window.close()
+
+
+def test_dep_force_window_shows_frequency_sweep_window() -> None:
+    window = create_dep_force_window()
+
+    try:
+        window.direct_gradient_input.setText("1.0e12")
+        window.calculate_and_show_frequency_sweep()
+
+        assert window.sweep_window is not None
+        assert window.sweep_window.current_result is not None
+        assert window.sweep_window.isVisible()
+    finally:
+        if window.sweep_window is not None:
+            window.sweep_window.close()
+        window.close()
+
+
+def test_dep_force_window_reuses_frequency_sweep_window() -> None:
+    window = create_dep_force_window()
+
+    try:
+        window.direct_gradient_input.setText("1.0e12")
+        window.calculate_and_show_frequency_sweep()
+        first_window = window.sweep_window
+
+        window.direct_gradient_input.setText("2.0e12")
+        window.calculate_and_show_frequency_sweep()
+
+        assert window.sweep_window is first_window
+    finally:
+        if window.sweep_window is not None:
+            window.sweep_window.close()
+        window.close()
+
+
+def test_dep_force_window_reset_does_not_close_sweep_window() -> None:
+    window = create_dep_force_window()
+
+    try:
+        window.direct_gradient_input.setText("1.0e12")
+        window.calculate_and_show_frequency_sweep()
+
+        assert window.sweep_window is not None
+
+        window.reset_inputs()
+
+        assert window.sweep_window is not None
+        assert window.sweep_window.current_result is not None
+    finally:
+        if window.sweep_window is not None:
+            window.sweep_window.close()
+        window.close()
