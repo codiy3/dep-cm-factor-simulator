@@ -37,7 +37,10 @@ from dep_cm_sim.error_evaluation import (
     evaluate_simulation_error,
     save_error_evaluation_result_to_csv,
 )
-from dep_cm_sim.experimental_data import load_experimental_data_from_csv
+from dep_cm_sim.experimental_data import (
+    ExperimentalData,
+    load_experimental_data_from_csv,
+)
 from dep_cm_sim.gui.dep_force_window import DepForceWindow
 from dep_cm_sim.gui.experimental_data_window import ExperimentalDataWindow
 from dep_cm_sim.gui.graph_window import GraphWindow
@@ -931,7 +934,10 @@ class ParameterWindow(QMainWindow):
         self.experimental_data_window.raise_()
         self.experimental_data_window.activateWindow()
 
-    def overlay_experimental_data(self, experimental_data) -> None:  # noqa: ANN001
+    def overlay_experimental_data(
+        self,
+        experimental_data: ExperimentalData,
+    ) -> None:
         if self.graph_window is None:
             self.graph_window = GraphWindow()
 

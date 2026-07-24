@@ -494,7 +494,7 @@ class GraphWindow(QMainWindow):
             self.ax.plot(frequency_hz, values, marker="o", label=legend_label)
         self.ax.legend()
         self.figure.tight_layout()
-        self.canvas.draw()
+        self.canvas.draw()  # type: ignore[no-untyped-call]
 
     def save_png(self) -> None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
