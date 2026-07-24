@@ -370,3 +370,23 @@ def test_dep_force_window_reset_does_not_close_sweep_window() -> None:
         if window.sweep_window is not None:
             window.sweep_window.close()
         window.close()
+
+
+def test_dep_force_window_uses_engineering_unit_for_sweep_label() -> None:
+    window = create_dep_force_window()
+
+    try:
+        window.direct_gradient_input.setText("1.0e12")
+        window.calculate_and_show_frequency_sweep()
+
+        assert window.sweep_window is not None
+
+        legend = window.sweep_window.ax.get_legend()
+        assert legend is not None
+        assert [text.get_text() for text in legend.get_texts()] == [
+            "sigma_s=0.20000 mS/m"
+        ]
+    finally:
+        if window.sweep_window is not None:
+            window.sweep_window.close()
+        window.close()

@@ -294,10 +294,10 @@ def test_add_curve_displays_re_k_metric_summary(
     assert graph_window.crossover_info_handle is not None
 
     assert graph_window.crossover_info_handle.get_text() == (
-        "Solution Cond: 2.0000e-04 S/m\n"
+        "Solution Cond: 0.20000 mS/m\n"
         "Crossover Freq:\n"
-        "  1: 1.0000e+01 Hz\n"
-        "Re[K]_Max: 7.5000e-01\n"
-        "Re[K]_Min: -5.0000e-01\n"
-        "Re[K]_Magnitude: 1.2500e+00"
+        "  1: 10.000 Hz\n"
+        "Re[K]_Max: 0.75000\n"
+        "Re[K]_Min: -0.50000\n"
+        "Re[K]_Magnitude: 1.2500"
     )

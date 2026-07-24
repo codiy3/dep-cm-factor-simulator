@@ -46,6 +46,7 @@ from dep_cm_sim.optimization import (
     OptimalFrequencyResult,
     find_optimal_frequency,
 )
+from dep_cm_sim.gui.value_format import format_frequency_hz
 
 
 FREQUENCY_X_MIN_HZ = 1.0
@@ -525,7 +526,7 @@ class GraphWindow(QMainWindow):
 
         annotation = self.ax.annotate(
             (
-                f"f_opt = {frequency_hz:.2e} Hz\n"
+                f"f_opt = {format_frequency_hz(frequency_hz)}\n"
                 f"|ΔRe[K]| = {difference:.3f}\n"
                 f"Re[K]1 = {value_1:.3f}\n"
                 f"Re[K]2 = {value_2:.3f}\n"
@@ -625,7 +626,7 @@ class GraphWindow(QMainWindow):
 
         annotation = self.ax.annotate(
             (
-                f"f_opt = {result.frequency_hz:.2e} Hz\n"
+                f"f_opt = {format_frequency_hz(result.frequency_hz)}\n"
                 f"|ΔRe[K]| = {result.difference:.3f}\n"
                 f"Re[K]1 = {result.value_1:.3f}\n"
                 f"Re[K]2 = {result.value_2:.3f}\n"

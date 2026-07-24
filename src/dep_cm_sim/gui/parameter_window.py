@@ -35,6 +35,10 @@ from dep_cm_sim.csv_export import ParameterSnapshot
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.gui.dep_force_window import DepForceWindow
 from dep_cm_sim.gui.graph_window import GraphWindow
+from dep_cm_sim.gui.value_format import (
+    format_conductivity_s_m,
+    format_frequency_hz,
+)
 from dep_cm_sim.paper_conditions import PAPER_FIGURE_SIGMA_S_CONDITIONS
 from dep_cm_sim.parameter_io import load_parameters_from_csv, save_parameters_to_csv
 
@@ -555,13 +559,15 @@ class ParameterWindow(QMainWindow):
             graph_window.add_curve(
                 frequency_hz,
                 values_1,
-                f"{cell_1.name} at sigma_s={result.optimal_sigma_s:.2e} S/m",
+                f"{cell_1.name} at sigma_s="
+                f"{format_conductivity_s_m(result.optimal_sigma_s)}",
                 parameters=cell_1_parameters,
             )
             graph_window.add_curve(
                 frequency_hz,
                 values_2,
-                f"{cell_2.name} at sigma_s={result.optimal_sigma_s:.2e} S/m",
+                f"{cell_2.name} at sigma_s="
+                f"{format_conductivity_s_m(result.optimal_sigma_s)}",
                 parameters=cell_2_parameters,
             )
             graph_window.show_optimization_result_marker(
@@ -605,8 +611,10 @@ class ParameterWindow(QMainWindow):
                 f"最適化モード: {mode_label}\n"
                 f"細胞テンプレート1: {cell_1.name}\n"
                 f"細胞テンプレート2: {cell_2.name}\n"
-                f"最適 sigma_s: {result.optimal_sigma_s:.4e} S/m\n"
-                f"最適周波数 f_opt: {result.optimal_frequency_hz:.4e} Hz\n"
+                f"最適 sigma_s: "
+                f"{format_conductivity_s_m(result.optimal_sigma_s)}\n"
+                f"最適周波数 f_opt: "
+                f"{format_frequency_hz(result.optimal_frequency_hz)}\n"
                 f"最大 |ΔRe[K]|: {result.max_difference:.4f}\n"
                 f"{cell_1.name} Re[K]: {result.value_1_at_optimum:.4f}\n"
                 f"{cell_2.name} Re[K]: {result.value_2_at_optimum:.4f}"
@@ -685,7 +693,10 @@ class ParameterWindow(QMainWindow):
         if graph_label:
             label = graph_label
         else:
-            label = f"sigma_s={float(parameters['sigma_s']):.2e} S/m"
+            label = (
+                "sigma_s="
+                f"{format_conductivity_s_m(float(parameters['sigma_s']))}"
+            )
 
         parameter_snapshots = build_parameter_snapshots(parameters)
 
@@ -761,7 +772,10 @@ class ParameterWindow(QMainWindow):
                     sigma_s=sigma_s,
                 )
 
-                label = f"{paper_label} sigma_s={sigma_s:.1e} S/m"
+                label = (
+                    f"{paper_label} sigma_s="
+                    f"{format_conductivity_s_m(sigma_s)}"
+                )
                 parameter_snapshots = build_parameter_snapshots(
                     parameters,
                     overrides={"sigma_s": sigma_s},
