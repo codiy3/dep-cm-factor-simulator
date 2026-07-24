@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from matplotlib.artist import Artist
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -14,8 +12,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from dep_cm_sim.crossover_display import (
+    build_dep_force_metric_summary,
+)
 from dep_cm_sim.dep_force_sweep import DepForceSweepResult
-from dep_cm_sim.equations import CrossoverFrequencyResult
 from dep_cm_sim.gui.graph_window import (
     FREQUENCY_MAJOR_TICK_LABELS,
     FREQUENCY_MAJOR_TICKS,
@@ -23,22 +23,6 @@ from dep_cm_sim.gui.graph_window import (
     FREQUENCY_X_MIN_HZ,
     find_japanese_font_properties,
 )
-
-
-def build_dep_force_crossover_summary(
-    results: Sequence[CrossoverFrequencyResult],
-) -> str:
-    """DEP力グラフ用のcrossover frequency表示文字列を生成する。"""
-
-    if not results:
-        return "crossover frequency: 該当なし"
-
-    lines = ["crossover frequency"]
-
-    for index, result in enumerate(results, start=1):
-        lines.append(f"{index}: {result.frequency_hz:.4e} Hz")
-
-    return "\n".join(lines)
 
 
 class DepForceSweepWindow(QMainWindow):
@@ -132,11 +116,11 @@ class DepForceSweepWindow(QMainWindow):
 
     def _add_crossover_markers(
         self,
-        results: Sequence[CrossoverFrequencyResult],
+        result: DepForceSweepResult,
     ) -> None:
-        for result in results:
+        for crossover in result.crossover_results:
             marker = self.ax.axvline(
-                result.frequency_hz,
+                crossover.frequency_hz,
                 linestyle=":",
                 linewidth=1.2,
                 alpha=0.8,
@@ -148,7 +132,13 @@ class DepForceSweepWindow(QMainWindow):
         self.crossover_info_handle = self.ax.text(
             0.98,
             0.98,
-            build_dep_force_crossover_summary(results),
+            build_dep_force_metric_summary(
+                solution_conductivity_s_m=(
+                    result.solution_conductivity_s_m
+                ),
+                crossover_results=result.crossover_results,
+                force_pn_values=result.force_pn_values,
+            ),
             transform=self.ax.transAxes,
             horizontalalignment="right",
             verticalalignment="top",
@@ -182,7 +172,7 @@ class DepForceSweepWindow(QMainWindow):
         self.force_curve_handle = curve_line
         self.current_result = result
 
-        self._add_crossover_markers(result.crossover_results)
+        self._add_crossover_markers(result)
 
         self.ax.legend()
         self.figure.tight_layout()

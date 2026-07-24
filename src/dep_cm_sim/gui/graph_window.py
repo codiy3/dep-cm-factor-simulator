@@ -29,7 +29,7 @@ from dep_cm_sim.condition_optimizer import (
     FrequencyOptimizationResult,
     find_optimal_opposite_sign_frequency,
 )
-from dep_cm_sim.crossover_display import build_crossover_summary
+from dep_cm_sim.crossover_display import build_re_k_metric_summary
 from dep_cm_sim.csv_export import (
     CsvExportError,
     CurveExportData,
@@ -46,6 +46,7 @@ from dep_cm_sim.optimization import (
     OptimalFrequencyResult,
     find_optimal_frequency,
 )
+from dep_cm_sim.gui.value_format import format_frequency_hz
 
 
 FREQUENCY_X_MIN_HZ = 1.0
@@ -107,6 +108,28 @@ def find_japanese_font_properties() -> FontProperties | None:
     for candidate in candidates:
         if candidate in installed_fonts:
             return FontProperties(family=candidate)
+
+    return None
+
+
+def _find_solution_conductivity(
+    parameters: Sequence[ParameterSnapshot],
+) -> float | None:
+    """パラメータ一覧から溶液導電率sigma_sを取得する。"""
+
+    for parameter in parameters:
+        if parameter.key != "sigma_s":
+            continue
+
+        try:
+            value = float(parameter.value)
+        except (TypeError, ValueError):
+            return None
+
+        if not np.isfinite(value):
+            return None
+
+        return value
 
     return None
 
@@ -224,9 +247,10 @@ class GraphWindow(QMainWindow):
 
     def _add_crossover_markers(
         self,
-        label: str,
         color: ColorType,
         results: Sequence[CrossoverFrequencyResult],
+        solution_conductivity_s_m: float | None,
+        re_k_values: NDArray[np.float64],
     ) -> None:
         for result in results:
             vertical_line = self.ax.axvline(
@@ -240,7 +264,15 @@ class GraphWindow(QMainWindow):
             )
             self.crossover_marker_handles.append(vertical_line)
 
-        self.crossover_summaries.append(build_crossover_summary(label, results))
+        self.crossover_summaries.append(
+            build_re_k_metric_summary(
+                solution_conductivity_s_m=(
+                    solution_conductivity_s_m
+                ),
+                crossover_results=results,
+                re_k_values=re_k_values,
+            )
+        )
         self._refresh_crossover_info()
 
     def _clear_optimal_markers(self) -> None:
@@ -308,9 +340,12 @@ class GraphWindow(QMainWindow):
             )
         )
         self._add_crossover_markers(
-            label=label,
             color=curve_line.get_color(),
             results=crossover_results,
+            solution_conductivity_s_m=(
+                _find_solution_conductivity(parameters)
+            ),
+            re_k_values=value_snapshot,
         )
         self.ax.legend()
         self.figure.tight_layout()
@@ -527,7 +562,7 @@ class GraphWindow(QMainWindow):
 
         annotation = self.ax.annotate(
             (
-                f"f_opt = {frequency_hz:.2e} Hz\n"
+                f"f_opt = {format_frequency_hz(frequency_hz)}\n"
                 f"|ΔRe[K]| = {difference:.3f}\n"
                 f"Re[K]1 = {value_1:.3f}\n"
                 f"Re[K]2 = {value_2:.3f}\n"
@@ -627,7 +662,7 @@ class GraphWindow(QMainWindow):
 
         annotation = self.ax.annotate(
             (
-                f"f_opt = {result.frequency_hz:.2e} Hz\n"
+                f"f_opt = {format_frequency_hz(result.frequency_hz)}\n"
                 f"|ΔRe[K]| = {result.difference:.3f}\n"
                 f"Re[K]1 = {result.value_1:.3f}\n"
                 f"Re[K]2 = {result.value_2:.3f}\n"

@@ -30,6 +30,16 @@ from dep_cm_sim.dep_force_sweep import (
 )
 from dep_cm_sim.equations import calculate_cm_factor_real
 from dep_cm_sim.gui.dep_force_sweep_window import DepForceSweepWindow
+from dep_cm_sim.gui.value_format import (
+    format_conductivity_s_m,
+    format_dimensionless,
+    format_force_pn,
+    format_frequency_hz,
+    format_length_m,
+    format_permittivity_f_m,
+    format_power_of_ten,
+    format_voltage_v,
+)
 
 ParameterProvider = Callable[[], Mapping[str, float | int | str]]
 
@@ -43,10 +53,13 @@ def format_dep_force_result(result: DepForceResult) -> str:
         "DEP force calculation result",
         "",
         f"mode: {electric_field.mode.value}",
-        f"frequency: {result.frequency_hz:.4e} Hz",
-        f"Re[K]: {result.re_k:.6e}",
-        f"epsilon_m: {result.epsilon_m_f_m:.6e} F/m",
-        f"radius: {result.radius_m:.6e} m",
+        f"frequency: {format_frequency_hz(result.frequency_hz)}",
+        f"Re[K]: {format_dimensionless(result.re_k)}",
+        (
+            "epsilon_m: "
+            f"{format_permittivity_f_m(result.epsilon_m_f_m)}"
+        ),
+        f"radius: {format_length_m(result.radius_m)}",
     ]
 
     if electric_field.mode is ElectricFieldMode.VPP_AND_FACTOR:
@@ -65,21 +78,30 @@ def format_dep_force_result(result: DepForceResult) -> str:
 
         lines.extend(
             [
-                f"Vp-p: {voltage_vpp:.6e} V",
-                f"V_peak: {voltage_peak:.6e} V",
-                f"V_rms: {voltage_rms:.6e} V",
-                f"gradient_factor: {gradient_factor:.6e} m^-3",
+                f"Vp-p: {format_voltage_v(voltage_vpp)}",
+                f"V_peak: {format_voltage_v(voltage_peak)}",
+                f"V_rms: {format_voltage_v(voltage_rms)}",
+                (
+                    "gradient_factor: "
+                    f"{format_power_of_ten(gradient_factor, 'm⁻³')}"
+                ),
             ]
         )
 
     lines.extend(
         [
             (
-                "gradient of |E_rms|^2: "
-                f"{electric_field.gradient_v2_m3:.6e} V^2/m^3"
+                "gradient of |E_rms|²: "
+                f"{format_power_of_ten(
+                    electric_field.gradient_v2_m3,
+                    'V²/m³',
+                )}"
             ),
-            f"F_DEP: {result.force_n:.6e} N",
-            f"F_DEP: {result.force_pn:.6e} pN",
+            (
+                "F_DEP: "
+                f"{format_power_of_ten(result.force_n, 'N')}"
+            ),
+            f"F_DEP: {format_force_pn(result.force_pn)}",
             f"classification: {result.classification}",
             "",
             "注: 球形粒子・双極子近似によるスカラーDEP力です。",
@@ -341,7 +363,8 @@ class DepForceWindow(QWidget):
                 label = graph_label
             else:
                 label = (
-                    f"sigma_s={float(parameters['sigma_s']):.2e} S/m"
+                    "sigma_s="
+                    f"{format_conductivity_s_m(float(parameters['sigma_s']))}"
                 )
 
             if self.sweep_window is None:
