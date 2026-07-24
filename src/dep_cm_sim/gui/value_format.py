@@ -81,7 +81,7 @@ def format_frequency_hz(
 def format_conductivity_s_m(
     value_s_m: float,
     *,
-    significant_digits: int = 5,
+    significant_digits: int = 3,
 ) -> str:
     """導電率をS/m、mS/m、µS/mのいずれかで表示する。"""
 

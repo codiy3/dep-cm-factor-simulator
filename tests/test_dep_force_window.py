@@ -425,7 +425,7 @@ def test_dep_force_window_uses_engineering_unit_for_sweep_label() -> None:
         legend = window.sweep_window.ax.get_legend()
         assert legend is not None
         assert [text.get_text() for text in legend.get_texts()] == [
-            "sigma_s=0.20000 mS/m"
+            "sigma_s=0.200 mS/m"
         ]
     finally:
         if window.sweep_window is not None:

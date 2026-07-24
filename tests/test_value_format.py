@@ -41,7 +41,17 @@ def test_format_conductivity_s_m(
     value: float,
     expected: str,
 ) -> None:
-    assert format_conductivity_s_m(value) == expected
+    assert (
+        format_conductivity_s_m(
+            value,
+            significant_digits=5,
+        )
+        == expected
+    )
+
+
+def test_format_conductivity_uses_three_significant_digits_by_default() -> None:
+    assert format_conductivity_s_m(2.0e-4) == "0.200 mS/m"
 
 
 @pytest.mark.parametrize(

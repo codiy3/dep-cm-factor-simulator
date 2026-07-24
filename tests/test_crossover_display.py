@@ -99,7 +99,7 @@ def test_build_re_k_metric_summary() -> None:
     )
 
     assert summary == (
-        "Solution Cond: 0.20000 mS/m\n"
+        "Solution Cond: 0.200 mS/m\n"
         "Crossover Freq:\n"
         "  1: 12.345 kHz\n"
         "  2: 2.5000 MHz\n"
