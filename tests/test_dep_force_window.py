@@ -200,10 +200,51 @@ def test_format_dep_force_result_contains_vpp_intermediate_values() -> None:
             window.calculate_result()
         )
 
-        assert "Vp-p:" in result_text
-        assert "V_peak:" in result_text
-        assert "V_rms:" in result_text
-        assert "gradient_factor:" in result_text
+        assert "frequency: 100.00 kHz" in result_text
+        assert "Vp-p: 2.8284 V" in result_text
+        assert "V_peak: 1.4142 V" in result_text
+        assert "V_rms: 1.0000 V" in result_text
+        assert (
+            "gradient_factor: 1.00000 × 10¹² m⁻³"
+            in result_text
+        )
+        assert (
+            "gradient of |E_rms|²: "
+            "1.00000 × 10¹² V²/m³"
+            in result_text
+        )
+        assert "e+" not in result_text
+        assert "e-" not in result_text
+    finally:
+        window.close()
+
+
+
+def test_format_dep_force_result_uses_engineering_units() -> None:
+    window = create_dep_force_window()
+
+    try:
+        window.frequency_input.setText("1.0e5")
+        window.direct_gradient_input.setText("1.0e12")
+
+        result_text = format_dep_force_result(
+            window.calculate_result()
+        )
+
+        assert "frequency: 100.00 kHz" in result_text
+        assert "Re[K]: " in result_text
+        assert "epsilon_m: " in result_text
+        assert "pF/m" in result_text
+        assert "radius: 6.7000 µm" in result_text
+        assert (
+            "gradient of |E_rms|²: "
+            "1.00000 × 10¹² V²/m³"
+            in result_text
+        )
+        assert "× 10⁻¹² N" in result_text
+        assert "pN" in result_text
+        assert "e+" not in result_text
+        assert "e-" not in result_text
     finally:
         window.close()
 
