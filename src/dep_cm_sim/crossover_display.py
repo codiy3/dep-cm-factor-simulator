@@ -88,3 +88,66 @@ def build_re_k_metric_summary(
     )
 
     return "\n".join(lines)
+
+def build_dep_force_metric_summary(
+    *,
+    solution_conductivity_s_m: float,
+    crossover_results: Sequence[CrossoverFrequencyResult],
+    force_pn_values: NDArray[np.float64],
+) -> str:
+    """DEP力曲線の導電率、crossover、統計値を表示用文字列にする。"""
+
+    if force_pn_values.size == 0:
+        raise ValueError("force_pn_values must not be empty.")
+
+    if not np.all(np.isfinite(force_pn_values)):
+        raise ValueError(
+            "force_pn_values must contain only finite values."
+        )
+
+    if not np.isfinite(solution_conductivity_s_m):
+        raise ValueError(
+            "solution conductivity must be finite."
+        )
+
+    if solution_conductivity_s_m < 0.0:
+        raise ValueError(
+            "solution conductivity must be non-negative."
+        )
+
+    lines = [
+        (
+            "Solution Cond: "
+            f"{solution_conductivity_s_m:.4e} S/m"
+        )
+    ]
+
+    if crossover_results:
+        lines.append("Crossover Freq:")
+
+        for index, result in enumerate(
+            crossover_results,
+            start=1,
+        ):
+            lines.append(
+                f"  {index}: {result.frequency_hz:.4e} Hz"
+            )
+    else:
+        lines.append("Crossover Freq: None")
+
+    force_max_pn = float(np.max(force_pn_values))
+    force_min_pn = float(np.min(force_pn_values))
+    force_magnitude_pn = force_max_pn - force_min_pn
+
+    lines.extend(
+        [
+            f"F_DEP_Max: {force_max_pn:.4e} pN",
+            f"F_DEP_Min: {force_min_pn:.4e} pN",
+            (
+                "F_DEP_Magnitude: "
+                f"{force_magnitude_pn:.4e} pN"
+            ),
+        ]
+    )
+
+    return "\n".join(lines)

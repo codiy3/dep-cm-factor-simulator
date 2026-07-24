@@ -1,12 +1,14 @@
+import numpy as np
 import pytest
 from PySide6.QtWidgets import QApplication
 
 from dep_cm_sim.dep_force import create_direct_electric_field
 from dep_cm_sim.dep_force_sweep import calculate_dep_force_sweep
-from dep_cm_sim.gui.dep_force_sweep_window import (
-    DepForceSweepWindow,
-    build_dep_force_crossover_summary,
+from dep_cm_sim.crossover_display import (
+    build_dep_force_metric_summary,
 )
+from dep_cm_sim.equations import CrossoverFrequencyResult
+from dep_cm_sim.gui.dep_force_sweep_window import DepForceSweepWindow
 
 
 pytestmark = pytest.mark.usefixtures("qt_event_loop")
@@ -50,24 +52,60 @@ def test_dep_force_sweep_window_creates_graph() -> None:
         window.close()
 
 
-def test_build_dep_force_crossover_summary_without_result() -> None:
-    assert (
-        build_dep_force_crossover_summary(())
-        == "crossover frequency: 該当なし"
+def test_build_dep_force_metric_summary_without_crossover() -> None:
+    force_values = np.array(
+        [-0.5, 0.25, 0.75],
+        dtype=np.float64,
+    )
+
+    summary = build_dep_force_metric_summary(
+        solution_conductivity_s_m=2.0e-4,
+        crossover_results=(),
+        force_pn_values=force_values,
+    )
+
+    assert summary == (
+        "Solution Cond: 2.0000e-04 S/m\n"
+        "Crossover Freq: None\n"
+        "F_DEP_Max: 7.5000e-01 pN\n"
+        "F_DEP_Min: -5.0000e-01 pN\n"
+        "F_DEP_Magnitude: 1.2500e+00 pN"
     )
 
 
-def test_build_dep_force_crossover_summary_with_results() -> None:
-    result = create_sweep_result()
-
-    summary = build_dep_force_crossover_summary(
-        result.crossover_results
+def test_build_dep_force_metric_summary_with_crossovers() -> None:
+    crossovers = (
+        CrossoverFrequencyResult(
+            frequency_hz=1.2345e4,
+            lower_index=1,
+            upper_index=2,
+        ),
+        CrossoverFrequencyResult(
+            frequency_hz=2.5e6,
+            lower_index=3,
+            upper_index=4,
+        ),
+    )
+    force_values = np.array(
+        [-0.8, 0.2, 1.6],
+        dtype=np.float64,
     )
 
-    assert "crossover frequency" in summary
+    summary = build_dep_force_metric_summary(
+        solution_conductivity_s_m=0.1,
+        crossover_results=crossovers,
+        force_pn_values=force_values,
+    )
 
-    for crossover in result.crossover_results:
-        assert f"{crossover.frequency_hz:.4e} Hz" in summary
+    assert summary == (
+        "Solution Cond: 1.0000e-01 S/m\n"
+        "Crossover Freq:\n"
+        "  1: 1.2345e+04 Hz\n"
+        "  2: 2.5000e+06 Hz\n"
+        "F_DEP_Max: 1.6000e+00 pN\n"
+        "F_DEP_Min: -8.0000e-01 pN\n"
+        "F_DEP_Magnitude: 2.4000e+00 pN"
+    )
 
 
 def test_dep_force_sweep_window_displays_curve() -> None:
@@ -99,6 +137,15 @@ def test_dep_force_sweep_window_displays_crossover_markers() -> None:
             result.crossover_results
         )
         assert window.crossover_info_handle is not None
+        assert window.crossover_info_handle.get_text() == (
+            build_dep_force_metric_summary(
+                solution_conductivity_s_m=(
+                    result.solution_conductivity_s_m
+                ),
+                crossover_results=result.crossover_results,
+                force_pn_values=result.force_pn_values,
+            )
+        )
     finally:
         window.close()
 

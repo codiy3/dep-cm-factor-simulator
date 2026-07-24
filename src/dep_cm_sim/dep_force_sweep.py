@@ -27,6 +27,7 @@ class DepForceSweepResult:
     force_pn_values: NDArray[np.float64]
     point_results: tuple[DepForceResult, ...]
     crossover_results: tuple[CrossoverFrequencyResult, ...]
+    solution_conductivity_s_m: float
     electric_field: ElectricFieldResult
 
 
@@ -128,5 +129,6 @@ def calculate_dep_force_sweep(
         force_pn_values=force_pn_values,
         point_results=point_results,
         crossover_results=crossover_results,
+        solution_conductivity_s_m=float(sigma_s),
         electric_field=electric_field,
     )
