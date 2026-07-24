@@ -170,3 +170,9 @@ def test_calculate_dep_force_sweep_rejects_reversed_frequency_range() -> None:
             f_min=1.0e6,
             f_max=1.0e3,
         )
+
+
+def test_calculate_dep_force_sweep_keeps_solution_conductivity() -> None:
+    result = calculate_example_sweep()
+
+    assert result.solution_conductivity_s_m == pytest.approx(2.0e-4)

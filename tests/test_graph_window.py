@@ -262,3 +262,42 @@ def test_save_csv_creates_summary_and_curve_data_files(
 
     assert (tmp_path / "simulation_summary.csv").exists()
     assert (tmp_path / "simulation_curve_data.csv").exists()
+
+
+def test_add_curve_displays_re_k_metric_summary(
+    graph_window: GraphWindow,
+) -> None:
+    frequencies = np.array(
+        [1.0, 10.0, 100.0],
+        dtype=np.float64,
+    )
+    values = np.array(
+        [-0.5, 0.0, 0.75],
+        dtype=np.float64,
+    )
+    parameters = (
+        ParameterSnapshot(
+            key="sigma_s",
+            name="溶液導電率",
+            value=2.0e-4,
+            unit="S/m",
+        ),
+    )
+
+    graph_window.add_curve(
+        frequencies,
+        values,
+        "curve",
+        parameters=parameters,
+    )
+
+    assert graph_window.crossover_info_handle is not None
+
+    assert graph_window.crossover_info_handle.get_text() == (
+        "Solution Cond: 0.200 mS/m\n"
+        "Crossover Freq:\n"
+        "  1: 10.000 Hz\n"
+        "Re[K]_Max: 0.75000\n"
+        "Re[K]_Min: -0.50000\n"
+        "Re[K]_Magnitude: 1.2500"
+    )

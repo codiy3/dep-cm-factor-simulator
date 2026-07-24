@@ -33,8 +33,21 @@ from dep_cm_sim.cell_templates import (
 from dep_cm_sim.condition_optimizer import find_optimal_solution_conductivity
 from dep_cm_sim.csv_export import ParameterSnapshot
 from dep_cm_sim.equations import calculate_cm_factor_real
+from dep_cm_sim.error_evaluation import (
+    evaluate_simulation_error,
+    save_error_evaluation_result_to_csv,
+)
+from dep_cm_sim.experimental_data import (
+    ExperimentalData,
+    load_experimental_data_from_csv,
+)
 from dep_cm_sim.gui.dep_force_window import DepForceWindow
+from dep_cm_sim.gui.experimental_data_window import ExperimentalDataWindow
 from dep_cm_sim.gui.graph_window import GraphWindow
+from dep_cm_sim.gui.value_format import (
+    format_conductivity_s_m,
+    format_frequency_hz,
+)
 from dep_cm_sim.paper_conditions import PAPER_FIGURE_SIGMA_S_CONDITIONS
 from dep_cm_sim.parameter_io import load_parameters_from_csv, save_parameters_to_csv
 
@@ -183,6 +196,7 @@ class ParameterWindow(QMainWindow):
         self.graph_window: GraphWindow | None = None
         self.extra_graph_windows: list[GraphWindow] = []
         self.dep_force_window: DepForceWindow | None = None
+        self.experimental_data_window: ExperimentalDataWindow | None = None
         self.cell_templates = load_available_cell_templates()
 
         central_widget = QWidget()
@@ -308,6 +322,38 @@ class ParameterWindow(QMainWindow):
         self.dep_force_window_button = QPushButton("DEP力計算ウィンドウを開く")
         self.dep_force_window_button.clicked.connect(self.open_dep_force_window)
         button_layout.addWidget(self.dep_force_window_button, 3, 0, 1, 3)
+
+        experimental_csv_button = QPushButton(
+            "実験データCSVを重ね描き"
+        )
+        experimental_csv_button.clicked.connect(
+            self.overlay_experimental_data_csv
+        )
+        button_layout.addWidget(
+            experimental_csv_button,
+            4,
+            0,
+            1,
+            3,
+        )
+
+        experimental_data_window_button = QPushButton("実験データ入力ウィンドウを開く")
+        experimental_data_window_button.clicked.connect(self.open_experimental_data_window)
+        button_layout.addWidget(experimental_data_window_button, 5, 0, 1, 3)
+
+        error_evaluation_button = QPushButton(
+            "実験データCSVと現在のシミュレーションを誤差評価"
+        )
+        error_evaluation_button.clicked.connect(
+            self.evaluate_experimental_data_error
+        )
+        button_layout.addWidget(
+            error_evaluation_button,
+            6,
+            0,
+            1,
+            3,
+        )
 
         layout.addLayout(button_layout)
 
@@ -555,13 +601,15 @@ class ParameterWindow(QMainWindow):
             graph_window.add_curve(
                 frequency_hz,
                 values_1,
-                f"{cell_1.name} at sigma_s={result.optimal_sigma_s:.2e} S/m",
+                f"{cell_1.name} at sigma_s="
+                f"{format_conductivity_s_m(result.optimal_sigma_s)}",
                 parameters=cell_1_parameters,
             )
             graph_window.add_curve(
                 frequency_hz,
                 values_2,
-                f"{cell_2.name} at sigma_s={result.optimal_sigma_s:.2e} S/m",
+                f"{cell_2.name} at sigma_s="
+                f"{format_conductivity_s_m(result.optimal_sigma_s)}",
                 parameters=cell_2_parameters,
             )
             graph_window.show_optimization_result_marker(
@@ -605,8 +653,10 @@ class ParameterWindow(QMainWindow):
                 f"最適化モード: {mode_label}\n"
                 f"細胞テンプレート1: {cell_1.name}\n"
                 f"細胞テンプレート2: {cell_2.name}\n"
-                f"最適 sigma_s: {result.optimal_sigma_s:.4e} S/m\n"
-                f"最適周波数 f_opt: {result.optimal_frequency_hz:.4e} Hz\n"
+                f"最適 sigma_s: "
+                f"{format_conductivity_s_m(result.optimal_sigma_s)}\n"
+                f"最適周波数 f_opt: "
+                f"{format_frequency_hz(result.optimal_frequency_hz)}\n"
                 f"最大 |ΔRe[K]|: {result.max_difference:.4f}\n"
                 f"{cell_1.name} Re[K]: {result.value_1_at_optimum:.4f}\n"
                 f"{cell_2.name} Re[K]: {result.value_2_at_optimum:.4f}"
@@ -685,7 +735,10 @@ class ParameterWindow(QMainWindow):
         if graph_label:
             label = graph_label
         else:
-            label = f"sigma_s={float(parameters['sigma_s']):.2e} S/m"
+            label = (
+                "sigma_s="
+                f"{format_conductivity_s_m(float(parameters['sigma_s']))}"
+            )
 
         parameter_snapshots = build_parameter_snapshots(parameters)
 
@@ -761,7 +814,10 @@ class ParameterWindow(QMainWindow):
                     sigma_s=sigma_s,
                 )
 
-                label = f"{paper_label} sigma_s={sigma_s:.1e} S/m"
+                label = (
+                    f"{paper_label} sigma_s="
+                    f"{format_conductivity_s_m(sigma_s)}"
+                )
                 parameter_snapshots = build_parameter_snapshots(
                     parameters,
                     overrides={"sigma_s": sigma_s},
@@ -790,6 +846,137 @@ class ParameterWindow(QMainWindow):
         self.dep_force_window.show()
         self.dep_force_window.raise_()
         self.dep_force_window.activateWindow()
+
+    def evaluate_experimental_data_error(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "誤差評価に使用する実験データCSVを読み込み",
+            "",
+            "CSV files (*.csv)",
+        )
+
+        if not file_path:
+            return
+
+        try:
+            parameters = self.read_parameters()
+            experimental_data = load_experimental_data_from_csv(file_path)
+
+            frequency_hz = np.logspace(
+                np.log10(float(parameters["f_min"])),
+                np.log10(float(parameters["f_max"])),
+                int(parameters["num_points"]),
+            )
+
+            simulation_values = calculate_cm_factor_real(
+                frequency_hz=frequency_hz,
+                membrane_capacitance=float(parameters["membrane_capacitance"]),
+                radius_m=float(parameters["radius_m"]),
+                eps_c_relative=float(parameters["eps_c_relative"]),
+                eps_s_relative=float(parameters["eps_s_relative"]),
+                sigma_c=float(parameters["sigma_c"]),
+                sigma_s=float(parameters["sigma_s"]),
+            )
+
+            result = evaluate_simulation_error(
+                simulation_frequency_hz=frequency_hz,
+                simulation_values=simulation_values,
+                experimental_frequency_hz=experimental_data.frequency_hz,
+                experimental_values=experimental_data.values,
+            )
+
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "誤差評価エラー",
+                f"誤差評価を実行できませんでした。\n\n原因:\n{error}",
+            )
+            return
+
+        save_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "誤差評価結果CSVを保存",
+            "outputs/error_evaluation_result.csv",
+            "CSV files (*.csv)",
+        )
+
+        if save_path:
+            try:
+                save_error_evaluation_result_to_csv(result, save_path)
+            except Exception as error:
+                QMessageBox.critical(
+                    self,
+                    "誤差評価結果CSV保存エラー",
+                    f"誤差評価結果CSVを保存できませんでした。\n\n原因:\n{error}",
+                )
+                return
+
+        QMessageBox.information(
+            self,
+            "誤差評価完了",
+            (
+                "実験データと現在のシミュレーションを比較しました。\n\n"
+                f"実験データ: {experimental_data.label}\n"
+                f"評価点数: {result.num_points}\n"
+                f"MAE: {result.mae:.6g}\n"
+                f"RMSE: {result.rmse:.6g}\n"
+                f"最大絶対誤差: {result.max_absolute_error:.6g}"
+            ),
+        )
+
+    def open_experimental_data_window(self) -> None:
+        if self.experimental_data_window is None:
+            self.experimental_data_window = ExperimentalDataWindow(
+                overlay_callback=self.overlay_experimental_data,
+            )
+
+        self.experimental_data_window.show()
+        self.experimental_data_window.raise_()
+        self.experimental_data_window.activateWindow()
+
+    def overlay_experimental_data(
+        self,
+        experimental_data: ExperimentalData,
+    ) -> None:
+        if self.graph_window is None:
+            self.graph_window = GraphWindow()
+
+        self.graph_window.add_experimental_data(
+            frequency_hz=experimental_data.frequency_hz,
+            values=experimental_data.values,
+            label=experimental_data.label,
+            plot_style=experimental_data.plot_style,
+        )
+        self.graph_window.show()
+
+
+    def overlay_experimental_data_csv(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "実験データCSVを読み込み",
+            "",
+            "CSV files (*.csv)",
+        )
+
+        if not file_path:
+            return
+
+        try:
+            experimental_data = load_experimental_data_from_csv(
+                file_path
+            )
+
+            self.overlay_experimental_data(experimental_data)
+
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "実験データCSV読み込みエラー",
+                (
+                    "実験データCSVを読み込めませんでした。"
+                    f"\n\n原因:\n{error}"
+                ),
+            )
 
     def save_parameters_csv(self) -> None:
         try:
