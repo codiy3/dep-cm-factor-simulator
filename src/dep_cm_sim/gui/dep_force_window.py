@@ -17,13 +17,19 @@ from PySide6.QtWidgets import (
 )
 
 from dep_cm_sim.dep_force import (
+    ElectricFieldResult,
     DepForceResult,
     ElectricFieldMode,
     calculate_dep_force,
     calculate_gradient_from_vpp,
     create_direct_electric_field,
 )
+from dep_cm_sim.dep_force_sweep import (
+    DepForceSweepResult,
+    calculate_dep_force_sweep,
+)
 from dep_cm_sim.equations import calculate_cm_factor_real
+from dep_cm_sim.gui.dep_force_sweep_window import DepForceSweepWindow
 
 ParameterProvider = Callable[[], Mapping[str, float | int | str]]
 
@@ -94,6 +100,7 @@ class DepForceWindow(QWidget):
         super().__init__()
 
         self.parameter_provider = parameter_provider
+        self.sweep_window: DepForceSweepWindow | None = None
 
         self.setWindowTitle("DEP CM Factor Simulator - DEP Force")
         self.resize(900, 600)
@@ -172,9 +179,15 @@ class DepForceWindow(QWidget):
         )
         action_layout.addWidget(self.calculate_button, 0, 0)
 
+        self.sweep_button = QPushButton("DEP力の周波数掃引グラフを表示")
+        self.sweep_button.clicked.connect(
+            self.calculate_and_show_frequency_sweep
+        )
+        action_layout.addWidget(self.sweep_button, 0, 1)
+
         self.reset_button = QPushButton("DEP力入力をクリア")
         self.reset_button.clicked.connect(self.reset_inputs)
-        action_layout.addWidget(self.reset_button, 0, 1)
+        action_layout.addWidget(self.reset_button, 0, 2)
 
         layout.addLayout(action_layout)
 
@@ -233,33 +246,7 @@ class DepForceWindow(QWidget):
         if frequency_hz <= 0.0:
             raise ValueError("計算周波数は0より大きい値にしてください。")
 
-        mode = self.mode_combo.currentData()
-
-        if mode == ElectricFieldMode.DIRECT_GRADIENT.value:
-            gradient_v2_m3 = self._read_finite_float(
-                self.direct_gradient_input,
-                field_name="電場勾配 ∇|E_rms|²",
-            )
-            electric_field = create_direct_electric_field(
-                gradient_v2_m3
-            )
-
-        elif mode == ElectricFieldMode.VPP_AND_FACTOR.value:
-            voltage_vpp = self._read_finite_float(
-                self.voltage_vpp_input,
-                field_name="Vp-p",
-            )
-            gradient_factor_m_inv3 = self._read_finite_float(
-                self.gradient_factor_input,
-                field_name="gradient factor",
-            )
-            electric_field = calculate_gradient_from_vpp(
-                voltage_vpp=voltage_vpp,
-                gradient_factor_m_inv3=gradient_factor_m_inv3,
-            )
-
-        else:
-            raise ValueError("電場入力方式を選択してください。")
+        electric_field = self._create_electric_field_from_inputs()
 
         re_k_values = calculate_cm_factor_real(
             frequency_hz=np.array([frequency_hz], dtype=np.float64),
@@ -292,6 +279,89 @@ class DepForceWindow(QWidget):
             radius_m=float(parameters["radius_m"]),
             electric_field=electric_field,
         )
+
+    def _create_electric_field_from_inputs(self) -> ElectricFieldResult:
+        """現在選択されている電場入力方式から電場条件を生成する。"""
+
+        mode = self.mode_combo.currentData()
+
+        if mode == ElectricFieldMode.DIRECT_GRADIENT.value:
+            gradient_v2_m3 = self._read_finite_float(
+                self.direct_gradient_input,
+                field_name="電場勾配 ∇|E_rms|²",
+            )
+            return create_direct_electric_field(gradient_v2_m3)
+
+        if mode == ElectricFieldMode.VPP_AND_FACTOR.value:
+            voltage_vpp = self._read_finite_float(
+                self.voltage_vpp_input,
+                field_name="Vp-p",
+            )
+            gradient_factor_m_inv3 = self._read_finite_float(
+                self.gradient_factor_input,
+                field_name="gradient factor",
+            )
+            return calculate_gradient_from_vpp(
+                voltage_vpp=voltage_vpp,
+                gradient_factor_m_inv3=gradient_factor_m_inv3,
+            )
+
+        raise ValueError("電場入力方式を選択してください。")
+
+    def calculate_frequency_sweep_result(self) -> DepForceSweepResult:
+        """ParameterWindowの周波数範囲でDEP力を掃引計算する。"""
+
+        parameters = self.parameter_provider()
+        electric_field = self._create_electric_field_from_inputs()
+
+        return calculate_dep_force_sweep(
+            f_min=float(parameters["f_min"]),
+            f_max=float(parameters["f_max"]),
+            num_points=int(parameters["num_points"]),
+            membrane_capacitance=float(
+                parameters["membrane_capacitance"]
+            ),
+            radius_m=float(parameters["radius_m"]),
+            eps_c_relative=float(parameters["eps_c_relative"]),
+            eps_s_relative=float(parameters["eps_s_relative"]),
+            sigma_c=float(parameters["sigma_c"]),
+            sigma_s=float(parameters["sigma_s"]),
+            electric_field=electric_field,
+        )
+
+    def calculate_and_show_frequency_sweep(self) -> None:
+        """DEP力の周波数掃引結果を専用グラフに表示する。"""
+
+        try:
+            parameters = self.parameter_provider()
+            result = self.calculate_frequency_sweep_result()
+
+            graph_label = str(parameters["graph_label"]).strip()
+            if graph_label:
+                label = graph_label
+            else:
+                label = (
+                    f"sigma_s={float(parameters['sigma_s']):.2e} S/m"
+                )
+
+            if self.sweep_window is None:
+                self.sweep_window = DepForceSweepWindow()
+
+            self.sweep_window.update_result(result, label=label)
+            self.sweep_window.show()
+            self.sweep_window.raise_()
+            self.sweep_window.activateWindow()
+
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "DEP力周波数掃引エラー",
+                (
+                    "DEP力の周波数掃引を計算できませんでした。\n\n"
+                    "入力値または計算条件を確認してください。\n\n"
+                    f"原因:\n{error}"
+                ),
+            )
 
     def calculate_and_display_result(self) -> None:
         """DEP力を計算し、途中値を含む結果を表示する。"""
